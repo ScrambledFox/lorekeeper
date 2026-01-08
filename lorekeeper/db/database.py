@@ -21,7 +21,7 @@ async_engine = create_async_engine(
 
 # Create sync engine for migrations
 sync_engine = create_engine(
-    settings.DATABASE_URL,
+    settings.DATABASE_URL.replace("postgresql://", "postgresql+psycopg://"),
     echo=settings.DB_ECHO,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,

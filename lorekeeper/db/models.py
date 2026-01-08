@@ -5,8 +5,9 @@ Database models for LoreKeeper.
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -67,7 +68,7 @@ class Document(Base):
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     in_world_date: Mapped[str | None] = mapped_column(String(255), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    provenance: Mapped[dict[str, object] | None] = mapped_column(nullable=True)
+    provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=utc_now, onupdate=utc_now, nullable=False
@@ -89,6 +90,7 @@ class DocumentSnippet(Base):
     start_char: Mapped[int] = mapped_column(nullable=False)
     end_char: Mapped[int] = mapped_column(nullable=False)
     snippet_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     def __repr__(self) -> str:
