@@ -1,8 +1,8 @@
 """Database utilities."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 
 def utc_now() -> datetime:
-    """Return a timezone-aware UTC datetime for DB defaults."""
-    return datetime.now(UTC)
+    """Return a naive UTC datetime for DB defaults."""
+    return datetime.utcnow()
