@@ -3,6 +3,7 @@ Pydantic schemas for LoreKeeper API requests and responses.
 """
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -88,7 +89,7 @@ class DocumentCreate(BaseModel):
     author: str | None = Field(None, max_length=255)
     in_world_date: str | None = Field(None, max_length=255, description="In-world date string")
     text: str = Field(..., min_length=1, description="Full document text")
-    provenance: dict | None = Field(None, description="Source metadata")
+    provenance: dict[str, Any] | None = Field(None, description="Source metadata")
 
 
 class DocumentResponse(BaseModel):
@@ -102,7 +103,7 @@ class DocumentResponse(BaseModel):
     author: str | None
     in_world_date: str | None
     text: str
-    provenance: dict | None
+    provenance: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
 

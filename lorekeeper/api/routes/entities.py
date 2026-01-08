@@ -36,10 +36,10 @@ async def create_entity(
         session.add(db_entity)
         await session.commit()
         await session.refresh(db_entity)
-        return EntityResponse.from_orm(db_entity)
+        return EntityResponse.model_validate(db_entity, from_attributes=True)
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/{entity_id}", response_model=EntityResponse)
@@ -57,7 +57,7 @@ async def get_entity(
     if not db_entity:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
 
-    return EntityResponse.from_orm(db_entity)
+    return EntityResponse.model_validate(db_entity, from_attributes=True)
 
 
 @router.patch("/{entity_id}", response_model=EntityResponse)
@@ -77,7 +77,7 @@ async def update_entity(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
 
     # Update only provided fields
-    update_dict = update_data.dict(exclude_unset=True)
+    update_dict = update_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(db_entity, key, value)
 
@@ -85,20 +85,20 @@ async def update_entity(
         session.add(db_entity)
         await session.commit()
         await session.refresh(db_entity)
-        return EntityResponse.from_orm(db_entity)
+        return EntityResponse.model_validate(db_entity, from_attributes=True)
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.post("/search", response_model=EntitySearchResult)
 async def search_entities(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
     world_id: UUID,
     query: str | None = Query(None, description="Search query"),
     entity_type: str | None = Query(None, description="Filter by entity type"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    session: Annotated[AsyncSession, Depends(get_async_session)] = None,
 ) -> EntitySearchResult:
     """Search entities by name and filters."""
     # Build query
@@ -130,5 +130,5 @@ async def search_entities(
 
     return EntitySearchResult(
         total=total,
-        results=[EntityResponse.from_orm(e) for e in entities],
+        results=[EntityResponse.model_validate(e, from_attributes=True) for e in entities],
     )

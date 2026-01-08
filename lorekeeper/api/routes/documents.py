@@ -14,9 +14,7 @@ from lorekeeper.api.schemas import (
     DocumentIndexRequest,
     DocumentIndexResponse,
     DocumentResponse,
-    DocumentSearchRequest,
     DocumentSearchResult,
-    DocumentSnippetResponse,
 )
 from lorekeeper.db.database import get_async_session
 from lorekeeper.db.models import Document, DocumentSnippet
@@ -50,10 +48,10 @@ async def create_document(
         session.add(db_document)
         await session.commit()
         await session.refresh(db_document)
-        return DocumentResponse.from_orm(db_document)
+        return DocumentResponse.model_validate(db_document, from_attributes=True)
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -71,7 +69,7 @@ async def get_document(
     if not db_document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    return DocumentResponse.from_orm(db_document)
+    return DocumentResponse.model_validate(db_document, from_attributes=True)
 
 
 @router.post("/{document_id}/index", response_model=DocumentIndexResponse)
@@ -132,18 +130,18 @@ async def index_document(
         )
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.post("/search", response_model=DocumentSearchResult)
 async def search_documents(
     world_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
     query: str | None = Query(None, description="Search query in title/author"),
     mode: str | None = Query(None, description="Filter by mode (STRICT or MYTHIC)"),
     kind: str | None = Query(None, description="Filter by document kind"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    session: Annotated[AsyncSession, Depends(get_async_session)] = None,
 ) -> DocumentSearchResult:
     """Search documents by title, author, or filters."""
     # Build query
@@ -194,5 +192,5 @@ async def search_documents(
 
     return DocumentSearchResult(
         total=total,
-        results=[DocumentResponse.from_orm(d) for d in documents],
+        results=[DocumentResponse.model_validate(d, from_attributes=True) for d in documents],
     )

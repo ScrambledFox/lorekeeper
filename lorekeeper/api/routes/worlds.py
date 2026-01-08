@@ -30,10 +30,10 @@ async def create_world(
         session.add(db_world)
         await session.commit()
         await session.refresh(db_world)
-        return WorldResponse.from_orm(db_world)
+        return WorldResponse.model_validate(db_world, from_attributes=True)
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/{world_id}", response_model=WorldResponse)
@@ -48,4 +48,14 @@ async def get_world(
     if not db_world:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="World not found")
 
-    return WorldResponse.from_orm(db_world)
+    return WorldResponse.model_validate(db_world, from_attributes=True)
+
+@router.get("", response_model=list[WorldResponse])
+async def list_worlds(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> list[WorldResponse]:
+    """List all worlds."""
+    result = await session.execute(select(World))
+    db_worlds = result.scalars().all()
+
+    return [WorldResponse.model_validate(world, from_attributes=True) for world in db_worlds]
