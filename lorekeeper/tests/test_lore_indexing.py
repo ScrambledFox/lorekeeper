@@ -1,5 +1,8 @@
 """
-Integration tests for Document API endpoints.
+Integration tests for lore document indexing and embedding.
+
+This module tests the indexing pipeline that converts narrative documents into
+searchable snippets with embeddings for semantic retrieval.
 """
 
 import pytest
@@ -8,12 +11,12 @@ from httpx import AsyncClient
 from lorekeeper.db.models import Document, World
 
 
-class TestDocumentEndpoints:
-    """Test suite for Document endpoints."""
+class TestLoreDocumentStorage:
+    """Test suite for storing narrative documents."""
 
     @pytest.mark.asyncio
-    async def test_create_document(self, client: AsyncClient, test_world: World) -> None:
-        """Test creating a document."""
+    async def test_store_canonical_document(self, client: AsyncClient, test_world: World) -> None:
+        """Test storing a canonical document for later retrieval."""
         response = await client.post(
             f"/worlds/{test_world.id}/documents",
             json={
@@ -35,8 +38,8 @@ class TestDocumentEndpoints:
         assert "id" in data
 
     @pytest.mark.asyncio
-    async def test_create_document_mythic(self, client: AsyncClient, test_world: World) -> None:
-        """Test creating a mythic document."""
+    async def test_store_mythic_narrative(self, client: AsyncClient, test_world: World) -> None:
+        """Test storing a mythic narrative document."""
         response = await client.post(
             f"/worlds/{test_world.id}/documents",
             json={
@@ -54,8 +57,10 @@ class TestDocumentEndpoints:
         assert data["kind"] == "RUMOR"
 
     @pytest.mark.asyncio
-    async def test_get_document(self, client: AsyncClient, test_document: Document) -> None:
-        """Test getting a document by ID."""
+    async def test_retrieve_stored_document(
+        self, client: AsyncClient, test_document: Document
+    ) -> None:
+        """Test retrieving a previously stored document."""
         response = await client.get(
             f"/worlds/{test_document.world_id}/documents/{test_document.id}"
         )
@@ -67,17 +72,25 @@ class TestDocumentEndpoints:
         assert data["mode"] == test_document.mode
 
     @pytest.mark.asyncio
-    async def test_get_nonexistent_document(self, client: AsyncClient, test_world: World) -> None:
-        """Test getting a non-existent document."""
+    async def test_retrieve_nonexistent_document(
+        self, client: AsyncClient, test_world: World
+    ) -> None:
+        """Test that retrieving a non-existent document returns 404."""
         from uuid import uuid4
 
         response = await client.get(f"/worlds/{test_world.id}/documents/{uuid4()}")
 
         assert response.status_code == 404
 
+
+class TestLoreIndexing:
+    """Test suite for indexing and chunking documents for semantic search."""
+
     @pytest.mark.asyncio
-    async def test_index_document(self, client: AsyncClient, test_document: Document) -> None:
-        """Test indexing a document."""
+    async def test_index_narrative_document(
+        self, client: AsyncClient, test_document: Document
+    ) -> None:
+        """Test chunking and embedding a narrative document."""
         response = await client.post(
             f"/worlds/{test_document.world_id}/documents/{test_document.id}/index",
             json={
@@ -89,14 +102,19 @@ class TestDocumentEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["document_id"] == str(test_document.id)
+        # Should create at least one snippet
         assert data["snippets_created"] >= 1
         assert len(data["snippet_ids"]) >= 1
 
+
+class TestNarrativeDiscovery:
+    """Test suite for finding and filtering documents by metadata."""
+
     @pytest.mark.asyncio
-    async def test_search_documents_by_title(
+    async def test_find_documents_by_title(
         self, client: AsyncClient, test_document: Document
     ) -> None:
-        """Test searching documents by title."""
+        """Test finding documents by searching their title."""
         response = await client.post(
             f"/worlds/{test_document.world_id}/documents/search",
             json={"query": "Test"},
@@ -108,8 +126,10 @@ class TestDocumentEndpoints:
         assert any(doc["title"] == "Test Document" for doc in data["results"])
 
     @pytest.mark.asyncio
-    async def test_search_documents_by_mode(self, client: AsyncClient, test_world: World) -> None:
-        """Test searching documents by mode."""
+    async def test_filter_documents_by_lore_mode(
+        self, client: AsyncClient, test_world: World
+    ) -> None:
+        """Test filtering documents by their lore mode (canonical vs mythic)."""
         # Create a MYTHIC document
         await client.post(
             f"/worlds/{test_world.id}/documents",
@@ -131,10 +151,10 @@ class TestDocumentEndpoints:
         assert all(doc["mode"] == "MYTHIC" for doc in data["results"])
 
     @pytest.mark.asyncio
-    async def test_search_documents_by_kind(
+    async def test_filter_documents_by_narrative_kind(
         self, client: AsyncClient, test_document: Document
     ) -> None:
-        """Test searching documents by kind."""
+        """Test filtering documents by their narrative kind."""
         response = await client.post(
             f"/worlds/{test_document.world_id}/documents/search",
             json={"kind": "CHRONICLE"},
@@ -145,10 +165,10 @@ class TestDocumentEndpoints:
         assert all(doc["kind"] == "CHRONICLE" for doc in data["results"])
 
     @pytest.mark.asyncio
-    async def test_search_documents_pagination(
+    async def test_paginate_through_documents(
         self, client: AsyncClient, test_document: Document
     ) -> None:
-        """Test document search pagination."""
+        """Test paginating through document search results."""
         response = await client.post(
             f"/worlds/{test_document.world_id}/documents/search",
             json={
