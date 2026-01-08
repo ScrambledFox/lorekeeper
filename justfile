@@ -1,0 +1,259 @@
+# LoreKeeper Justfile
+# Run commands with: just <command>
+# List all commands: just --list
+
+set shell := ["bash", "-c"]
+set dotenv-load := true
+
+# Default recipe - show help
+default:
+    @just --list
+
+# ============================================================================
+# Setup & Environment
+# ============================================================================
+
+# Initialize project and install dependencies
+setup:
+    @echo "🔧 Setting up LoreKeeper project..."
+    uv sync
+    @echo "✅ Project initialized successfully!"
+
+# Update dependencies to latest versions
+update:
+    @echo "📦 Updating dependencies..."
+    uv sync --upgrade
+    @echo "✅ Dependencies updated!"
+
+# ============================================================================
+# Development Server
+# ============================================================================
+
+# Run development API server with hot reload
+dev:
+    @echo "🚀 Starting development server..."
+    uv run uvicorn lorekeeper.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Run API server in production mode
+run:
+    @echo "🚀 Starting API server..."
+    uv run uvicorn lorekeeper.api.main:app --host 0.0.0.0 --port 8000
+
+# Run entire stack with Docker Compose
+up:
+    @echo "🐳 Starting Docker stack..."
+    docker-compose up --build
+
+# Run Docker stack in background
+up-d:
+    @echo "🐳 Starting Docker stack in background..."
+    docker-compose up -d --build
+
+# Stop Docker stack
+down:
+    @echo "🛑 Stopping Docker stack..."
+    docker-compose down
+
+# View Docker logs
+logs service="":
+    @if [ -z "{{ service }}" ]; then \
+        docker-compose logs -f; \
+    else \
+        docker-compose logs -f {{ service }}; \
+    fi
+
+# Restart Docker services
+restart service="":
+    @if [ -z "{{ service }}" ]; then \
+        docker-compose restart; \
+    else \
+        docker-compose restart {{ service }}; \
+    fi
+
+# ============================================================================
+# Database
+# ============================================================================
+
+# Start PostgreSQL in Docker
+db-up:
+    @echo "🗄️  Starting PostgreSQL..."
+    docker-compose up -d postgres
+
+# Stop PostgreSQL
+db-down:
+    @echo "🛑 Stopping PostgreSQL..."
+    docker-compose down postgres
+
+# Create a new database migration
+db-migrate name:
+    @echo "📝 Creating migration: {{ name }}"
+    uv run alembic revision --autogenerate -m "{{ name }}"
+
+# Run pending migrations
+db-upgrade:
+    @echo "⬆️  Running migrations..."
+    uv run alembic upgrade head
+
+# Rollback last migration
+db-downgrade:
+    @echo "⬇️  Rolling back migration..."
+    uv run alembic downgrade -1
+
+# View migration history
+db-history:
+    @echo "📜 Migration history:"
+    uv run alembic history
+
+# ============================================================================
+# Testing
+# ============================================================================
+
+# Run all tests
+test:
+    @echo "🧪 Running tests..."
+    uv run pytest
+
+# Run tests with verbose output
+test-v:
+    @echo "🧪 Running tests (verbose)..."
+    uv run pytest -v
+
+# Run tests with coverage report
+test-cov:
+    @echo "🧪 Running tests with coverage..."
+    uv run pytest --cov=lorekeeper --cov-report=html --cov-report=term
+    @echo "📊 Coverage report generated in htmlcov/index.html"
+
+# Run specific test file
+test-file file:
+    @echo "🧪 Running tests in {{ file }}..."
+    uv run pytest {{ file }} -v
+
+# Run tests matching pattern
+test-k pattern:
+    @echo "🧪 Running tests matching '{{ pattern }}'..."
+    uv run pytest -k "{{ pattern }}" -v
+
+# ============================================================================
+# Code Quality
+# ============================================================================
+
+# Format code with Black
+fmt:
+    @echo "🎨 Formatting code..."
+    uv run black lorekeeper
+    @echo "✅ Code formatted!"
+
+# Check code with Ruff
+lint:
+    @echo "🔍 Linting code..."
+    uv run ruff check lorekeeper
+
+# Fix linting issues with Ruff
+lint-fix:
+    @echo "🔧 Fixing linting issues..."
+    uv run ruff check --fix lorekeeper
+
+# Type check with mypy
+type-check:
+    @echo "🔎 Type checking..."
+    uv run mypy lorekeeper
+
+# Run all quality checks
+check: fmt lint type-check
+    @echo "✅ All checks passed!"
+
+# ============================================================================
+# Dependencies
+# ============================================================================
+
+# Add a new production dependency
+add package:
+    @echo "📦 Adding dependency: {{ package }}"
+    uv pip install {{ package }}
+    @echo "✅ Dependency added!"
+
+# Add a new dev dependency
+add-dev package:
+    @echo "📦 Adding dev dependency: {{ package }}"
+    uv pip install --dev {{ package }}
+    @echo "✅ Dev dependency added!"
+
+# Show outdated dependencies
+outdated:
+    @echo "🔍 Checking for outdated dependencies..."
+    uv pip list --outdated
+
+# ============================================================================
+# API Documentation
+# ============================================================================
+
+# Open API docs (requires server running)
+docs:
+    @echo "📖 Opening API documentation..."
+    open http://localhost:8000/docs || xdg-open http://localhost:8000/docs
+
+# Open ReDoc documentation (requires server running)
+redoc:
+    @echo "📖 Opening ReDoc documentation..."
+    open http://localhost:8000/redoc || xdg-open http://localhost:8000/redoc
+
+# ============================================================================
+# Utility
+# ============================================================================
+
+# Clean build and cache files
+clean:
+    @echo "🧹 Cleaning up..."
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name htmlcov -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    find . -type f -name ".coverage" -delete 2>/dev/null || true
+    @echo "✅ Cleanup complete!"
+
+# Clean everything including Docker volumes
+clean-all: clean
+    @echo "🧹 Cleaning up Docker resources..."
+    docker-compose down -v
+    @echo "✅ Full cleanup complete!"
+
+# Show environment info
+info:
+    @echo "📋 LoreKeeper Environment Info"
+    @echo "================================"
+    @echo "Python version: $$(python --version)"
+    @echo "UV version: $$(uv --version)"
+    @echo "Docker version: $$(docker --version)"
+    @echo "Docker Compose version: $$(docker-compose --version)"
+    @echo ""
+    @echo "Project structure:"
+    @find lorekeeper -type d -maxdepth 1 | sort | sed 's|^|  |'
+
+# Show this help message
+help:
+    @just --list
+
+# ============================================================================
+# Quick Workflows
+# ============================================================================
+
+# Full setup and start development (setup + dev server + db)
+start: setup db-up
+    @echo "🎉 LoreKeeper is ready! Starting dev server..."
+    just dev
+
+# Run everything for development (Docker stack)
+dev-full: up
+    @echo "🎉 Development stack is running!"
+    @echo "API: http://localhost:8000"
+    @echo "Docs: http://localhost:8000/docs"
+
+# Complete test and quality check workflow
+verify: test check
+    @echo "✅ All verifications passed!"
+
+# Build and test (CI-like workflow)
+build: clean setup test check
+    @echo "✅ Build successful!"
