@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # World Schemas
@@ -20,14 +20,13 @@ class WorldCreate(BaseModel):
 class WorldResponse(BaseModel):
     """Schema for world response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     description: str | None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Entity Schemas
@@ -56,6 +55,8 @@ class EntityUpdate(BaseModel):
 class EntityResponse(BaseModel):
     """Schema for entity response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     world_id: UUID
     type: str
@@ -67,9 +68,6 @@ class EntityResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class EntitySearchResult(BaseModel):
@@ -95,6 +93,8 @@ class DocumentCreate(BaseModel):
 class DocumentResponse(BaseModel):
     """Schema for document response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     world_id: UUID
     mode: str
@@ -106,9 +106,6 @@ class DocumentResponse(BaseModel):
     provenance: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Document Snippet Schemas
@@ -127,6 +124,8 @@ class DocumentSnippetCreate(BaseModel):
 class DocumentSnippetResponse(BaseModel):
     """Schema for document snippet response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     document_id: UUID
     world_id: UUID
@@ -136,9 +135,6 @@ class DocumentSnippetResponse(BaseModel):
     snippet_text: str
     embedding: list[float] | None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Document Indexing Schemas
@@ -180,6 +176,8 @@ class DocumentSearchResult(BaseModel):
 class RetrievalEntityCard(BaseModel):
     """Schema for entity card in retrieval results."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     object_type: str = "ENTITY"
     entity_id: UUID
     world_id: UUID
@@ -191,12 +189,11 @@ class RetrievalEntityCard(BaseModel):
     tags: list[str]
     reliability_label: str = "CANON"  # Always CANON for entities in Phase 1
 
-    class Config:
-        from_attributes = True
-
 
 class RetrievalSnippetCard(BaseModel):
     """Schema for snippet card in retrieval results."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     object_type: str = "SNIPPET"
     snippet_id: UUID
@@ -216,9 +213,6 @@ class RetrievalSnippetCard(BaseModel):
     # Reliability and confidence
     reliability_label: str  # CANON_SOURCE or MYTHIC_SOURCE
     similarity_score: float | None = None  # Optional vector similarity score
-
-    class Config:
-        from_attributes = True
 
 
 class RetrievalRequest(BaseModel):
