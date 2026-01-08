@@ -13,7 +13,7 @@ from lorekeeper.api.utils import (
     format_uuid,
     parse_uuid,
 )
-from lorekeeper.indexer.chunker import DocumentChunker, EmbeddingPlaceholder
+from lorekeeper.indexer.chunker import DocumentChunker, EmbeddingService
 
 
 def test_document_chunker_by_paragraphs() -> None:
@@ -71,11 +71,15 @@ def test_uuid_utilities() -> None:
         parse_uuid("not-a-uuid")
 
 
-def test_embedding_placeholder() -> None:
-    """Test EmbeddingPlaceholder typing."""
-    embedder: EmbeddingPlaceholder = EmbeddingPlaceholder()
+def test_embedding_service() -> None:
+    """Test EmbeddingService typing."""
+    embedder: EmbeddingService = EmbeddingService(model_name="mock")
 
     embedding: list[float] = embedder.embed("test text")
     assert isinstance(embedding, list)
-    assert len(embedding) == 384
+    assert len(embedding) == 1536
     assert all(isinstance(x, float) for x in embedding)
+
+    # Test determinism
+    embedding2: list[float] = embedder.embed("test text")
+    assert embedding == embedding2

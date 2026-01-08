@@ -1,0 +1,134 @@
+"""
+Entity API routes for LoreKeeper.
+"""
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from lorekeeper.api.schemas import EntityCreate, EntityResponse, EntitySearchResult, EntityUpdate
+from lorekeeper.db.database import get_async_session
+from lorekeeper.db.models import Entity
+
+router = APIRouter(prefix="/worlds/{world_id}/entities", tags=["entities"])
+
+
+@router.post("", response_model=EntityResponse, status_code=status.HTTP_201_CREATED)
+async def create_entity(
+    world_id: UUID,
+    entity: EntityCreate,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> EntityResponse:
+    """Create a new entity in a world."""
+    try:
+        db_entity = Entity(
+            world_id=world_id,
+            type=entity.type,
+            canonical_name=entity.canonical_name,
+            aliases=entity.aliases,
+            summary=entity.summary,
+            description=entity.description,
+            tags=entity.tags,
+        )
+        session.add(db_entity)
+        await session.commit()
+        await session.refresh(db_entity)
+        return EntityResponse.from_orm(db_entity)
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/{entity_id}", response_model=EntityResponse)
+async def get_entity(
+    world_id: UUID,
+    entity_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> EntityResponse:
+    """Get an entity by ID."""
+    result = await session.execute(
+        select(Entity).where(and_(Entity.id == entity_id, Entity.world_id == world_id))
+    )
+    db_entity = result.scalars().first()
+
+    if not db_entity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
+
+    return EntityResponse.from_orm(db_entity)
+
+
+@router.patch("/{entity_id}", response_model=EntityResponse)
+async def update_entity(
+    world_id: UUID,
+    entity_id: UUID,
+    update_data: EntityUpdate,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> EntityResponse:
+    """Update an entity."""
+    result = await session.execute(
+        select(Entity).where(and_(Entity.id == entity_id, Entity.world_id == world_id))
+    )
+    db_entity = result.scalars().first()
+
+    if not db_entity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
+
+    # Update only provided fields
+    update_dict = update_data.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(db_entity, key, value)
+
+    try:
+        session.add(db_entity)
+        await session.commit()
+        await session.refresh(db_entity)
+        return EntityResponse.from_orm(db_entity)
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/search", response_model=EntitySearchResult)
+async def search_entities(
+    world_id: UUID,
+    query: str | None = Query(None, description="Search query"),
+    entity_type: str | None = Query(None, description="Filter by entity type"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: Annotated[AsyncSession, Depends(get_async_session)] = None,
+) -> EntitySearchResult:
+    """Search entities by name and filters."""
+    # Build query
+    q = select(Entity).where(Entity.world_id == world_id)
+
+    if query:
+        # Search by canonical name or aliases
+        search_term = f"%{query}%"
+        q = q.where(Entity.canonical_name.ilike(search_term))
+
+    if entity_type:
+        q = q.where(Entity.type == entity_type)
+
+    # Get total count
+    count_query = select(func.count()).select_from(Entity).where(Entity.world_id == world_id)
+    if query:
+        search_term = f"%{query}%"
+        count_query = count_query.where(Entity.canonical_name.ilike(search_term))
+    if entity_type:
+        count_query = count_query.where(Entity.type == entity_type)
+
+    count_result = await session.execute(count_query)
+    total = count_result.scalar() or 0
+
+    # Get paginated results
+    q = q.offset(offset).limit(limit)
+    result = await session.execute(q)
+    entities = result.scalars().all()
+
+    return EntitySearchResult(
+        total=total,
+        results=[EntityResponse.from_orm(e) for e in entities],
+    )
