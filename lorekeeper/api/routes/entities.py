@@ -120,9 +120,11 @@ async def search_entities(
             Entity.canonical_name.ilike(search_term),
             Entity.summary.ilike(search_term),
             Entity.description.ilike(search_term),
+            # Search for partial matches in aliases array using func.array_to_string
+            func.array_to_string(Entity.aliases, " ").ilike(search_term),
+            # Also search for partial matches in tags array
+            func.array_to_string(Entity.tags, " ").ilike(search_term),
         )
-        # For array fields (aliases, tags), we need to use the array contains operator
-        # PostgreSQL supports @> operator for array containment
         q = q.where(search_conditions)
 
     if entity_type:
@@ -136,6 +138,10 @@ async def search_entities(
             Entity.canonical_name.ilike(search_term),
             Entity.summary.ilike(search_term),
             Entity.description.ilike(search_term),
+            # Search for partial matches in aliases array
+            func.array_to_string(Entity.aliases, " ").ilike(search_term),
+            # Also search for partial matches in tags array
+            func.array_to_string(Entity.tags, " ").ilike(search_term),
         )
         count_query = count_query.where(search_conditions)
     if entity_type:

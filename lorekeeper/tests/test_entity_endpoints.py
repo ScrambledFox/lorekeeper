@@ -221,7 +221,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_by_alias(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test searching entities by their aliases."""
         from lorekeeper.db.models import Entity
@@ -237,7 +241,7 @@ class TestEnhancedEntitySearch:
         db_session.add(entity)
         await db_session.flush()
 
-        # Search by alias
+        # Test 1: Search by full alias
         response = await client.post(
             f"/worlds/{test_world.id}/entities/search",
             json={"query": "Silver Sage"},
@@ -248,9 +252,35 @@ class TestEnhancedEntitySearch:
         assert data["total"] >= 1
         assert any(e["canonical_name"] == "Aldren the Wise" for e in data["results"])
 
+        # Test 2: Search by partial alias (just "Silver")
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "Silver"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Aldren the Wise" for e in data["results"])
+
+        # Test 3: Search by another alias partial
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "Arch-Mage"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Aldren the Wise" for e in data["results"])
+
     @pytest.mark.asyncio
     async def test_search_by_summary(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test searching entities by their summary field."""
         from lorekeeper.db.models import Entity
@@ -278,7 +308,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_by_description(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test searching entities by their description field."""
         from lorekeeper.db.models import Entity
@@ -307,7 +341,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_cross_field_matching(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test that search returns results from multiple field matches."""
         from lorekeeper.db.models import Entity
@@ -351,7 +389,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_case_insensitive(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test that search is case-insensitive across all fields."""
         from lorekeeper.db.models import Entity
@@ -378,7 +420,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_partial_word_match(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test that search matches partial words."""
         from lorekeeper.db.models import Entity
@@ -405,7 +451,11 @@ class TestEnhancedEntitySearch:
 
     @pytest.mark.asyncio
     async def test_search_combined_with_type_filter(
-        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        db_session: AsyncSession,
+        override_get_session: bool,
     ) -> None:
         """Test that search query works with type filtering."""
         from lorekeeper.db.models import Entity
