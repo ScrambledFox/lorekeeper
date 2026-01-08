@@ -7,14 +7,11 @@ Run this after migrations are applied:
 """
 
 import asyncio
-from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import insert
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from lorekeeper.db.database import AsyncSessionLocal
-from lorekeeper.db.models import World, Entity, Document
+from lorekeeper.db.models import Document, Entity, World
+from lorekeeper.db.utils import utc_now
 
 
 async def seed_initial_world() -> None:
@@ -26,8 +23,8 @@ async def seed_initial_world() -> None:
             id=world_id,
             name="Aethermoor",
             description="A mystical realm where ancient magic flows through forgotten kingdoms.",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         session.add(world)
         await session.flush()  # Flush to ensure world is created before adding relationships
@@ -44,8 +41,8 @@ async def seed_initial_world() -> None:
                 description="King Aldren ruled the Northern Kingdoms from the year 1000 to 1032. He was known for his diplomatic prowess and his love of ancient lore.",
                 tags=["ruler", "diplomat", "ancient_lore", "deceased"],
                 status="ACTIVE",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
             Entity(
                 id=uuid4(),
@@ -57,8 +54,8 @@ async def seed_initial_world() -> None:
                 description="Lake Silvermere is an ancient glacial lake surrounded by crystal caves. Its waters are said to reflect not only light but also glimpses of other times.",
                 tags=["ancient", "magical", "sacred"],
                 status="ACTIVE",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
             Entity(
                 id=uuid4(),
@@ -70,8 +67,8 @@ async def seed_initial_world() -> None:
                 description="The Circle of Whispers is an ancient order dedicated to preserving forbidden knowledge and studying the nature of reality itself.",
                 tags=["scholars", "mages", "secret", "ancient"],
                 status="ACTIVE",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
         ]
 
@@ -91,8 +88,8 @@ async def seed_initial_world() -> None:
                 in_world_date="Year 1150",
                 text="The Northern Kingdoms were ruled by the line of Aldren for over two centuries. King Aldren (1000-1032) was the last of his line. After his death, the kingdoms fell into decline, and no single ruler emerged to unite them again. The exact circumstances of his death remain disputed, though most scholars agree he died of natural causes.",
                 provenance={"source": "historical_archive", "authenticity": "high"},
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
             Document(
                 id=uuid4(),
@@ -104,8 +101,8 @@ async def seed_initial_world() -> None:
                 in_world_date="Unknown",
                 text="Some say King Aldren did not truly die. Instead, they whisper, he sought refuge beneath Lake Silvermere, where the waters granted him eternal life. On certain nights when the stars align, fishermen report seeing a crowned figure walking the lake bottom, watching the world above. Aldren still lives, they say, waiting for the day when his people will call him back to rule.",
                 provenance={"source": "tavern_tales", "authenticity": "low"},
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
             Document(
                 id=uuid4(),
@@ -117,8 +114,8 @@ async def seed_initial_world() -> None:
                 in_world_date="Year 876 (copied)",
                 text="In the depths of knowing lies the truth of transformation. The lake that mirrors stars also mirrors souls. Those pure of heart may drink and understand. Those impure shall see only their own reflection. The king sought this knowledge, but pride closed his eyes. Thus he remains, neither living nor dead, locked between worlds.",
                 provenance={"source": "forbidden_archive", "authenticity": "unknown"},
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             ),
         ]
 
@@ -128,7 +125,7 @@ async def seed_initial_world() -> None:
         # Commit all changes
         await session.commit()
         print("✓ Seed data created successfully")
-        print(f"  - World: Aethermoor")
+        print("  - World: Aethermoor")
         print(f"  - Entities: {len(entities)}")
         print(f"  - Documents: {len(documents)}")
 

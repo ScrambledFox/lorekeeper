@@ -3,9 +3,10 @@ Database models for LoreKeeper.
 """
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID, uuid4
 
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import Vector  # type: ignore
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -68,7 +69,7 @@ class Document(Base):
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     in_world_date: Mapped[str | None] = mapped_column(String(255), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=utc_now, onupdate=utc_now, nullable=False

@@ -4,15 +4,17 @@ Standalone migration runner for LoreKeeper.
 Runs migrations without importing the complex database.py module.
 """
 
-import psycopg
 import sys
-from pathlib import Path
+from typing import LiteralString
+
+import psycopg
+from psycopg import sql
 
 # Database connection string
 DATABASE_URL = "postgresql://lorekeeper:lorekeeper_dev_password@localhost:5432/lorekeeper"
 
 
-def get_migration_sql() -> str:
+def get_migration_sql() -> LiteralString:
     """Get the initial migration SQL."""
     return """
 BEGIN;
@@ -104,12 +106,12 @@ COMMIT;
 def run_migrations() -> None:
     """Run all migrations."""
     try:
-        with psycopg.connect(DATABASE_URL) as conn:
+        with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
             conn.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
             conn.execute('CREATE EXTENSION IF NOT EXISTS "vector"')
 
-            sql = get_migration_sql()
-            conn.execute(sql)
+            sql_script = get_migration_sql()
+            conn.execute(sql.SQL(sql_script), prepare=False)
 
             print("✓ Database migrations completed successfully")
 
