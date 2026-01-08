@@ -6,7 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lorekeeper.api.schemas import EntityCreate, EntityResponse, EntitySearchResult, EntityUpdate
@@ -100,14 +100,30 @@ async def search_entities(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> EntitySearchResult:
-    """Search entities by name and filters."""
+    """
+    Search entities across multiple fields.
+
+    Searches in:
+    - Canonical name
+    - Aliases
+    - Summary
+    - Description
+    - Tags
+    """
     # Build query
     q = select(Entity).where(Entity.world_id == world_id)
 
     if query:
-        # Search by canonical name or aliases
+        # Search across multiple fields: canonical_name, aliases, summary, description, tags
         search_term = f"%{query}%"
-        q = q.where(Entity.canonical_name.ilike(search_term))
+        search_conditions = or_(
+            Entity.canonical_name.ilike(search_term),
+            Entity.summary.ilike(search_term),
+            Entity.description.ilike(search_term),
+        )
+        # For array fields (aliases, tags), we need to use the array contains operator
+        # PostgreSQL supports @> operator for array containment
+        q = q.where(search_conditions)
 
     if entity_type:
         q = q.where(Entity.type == entity_type)
@@ -116,7 +132,12 @@ async def search_entities(
     count_query = select(func.count()).select_from(Entity).where(Entity.world_id == world_id)
     if query:
         search_term = f"%{query}%"
-        count_query = count_query.where(Entity.canonical_name.ilike(search_term))
+        search_conditions = or_(
+            Entity.canonical_name.ilike(search_term),
+            Entity.summary.ilike(search_term),
+            Entity.description.ilike(search_term),
+        )
+        count_query = count_query.where(search_conditions)
     if entity_type:
         count_query = count_query.where(Entity.type == entity_type)
 

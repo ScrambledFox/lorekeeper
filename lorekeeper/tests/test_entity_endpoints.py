@@ -7,6 +7,7 @@ authoritative facts and beings that define the base reality of a world.
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from lorekeeper.db.models import Entity, World
 
@@ -213,3 +214,224 @@ class TestEntityDiscovery:
         assert response.status_code == 200
         data = response.json()
         assert len(data["results"]) <= 5
+
+
+class TestEnhancedEntitySearch:
+    """Test suite for enhanced entity search across multiple fields."""
+
+    @pytest.mark.asyncio
+    async def test_search_by_alias(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test searching entities by their aliases."""
+        from lorekeeper.db.models import Entity
+
+        # Create entity with aliases
+        entity = Entity(
+            world_id=test_world.id,
+            type="Character",
+            canonical_name="Aldren the Wise",
+            aliases=["Arch-Mage Aldren", "The Silver Sage"],
+            summary="A legendary wizard",
+        )
+        db_session.add(entity)
+        await db_session.flush()
+
+        # Search by alias
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "Silver Sage"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Aldren the Wise" for e in data["results"])
+
+    @pytest.mark.asyncio
+    async def test_search_by_summary(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test searching entities by their summary field."""
+        from lorekeeper.db.models import Entity
+
+        # Create entity with descriptive summary
+        entity = Entity(
+            world_id=test_world.id,
+            type="Faction",
+            canonical_name="Order of the Black Tower",
+            summary="A secret society of necromancers plotting world domination",
+        )
+        db_session.add(entity)
+        await db_session.flush()
+
+        # Search by summary keyword
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "necromancers"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Order of the Black Tower" for e in data["results"])
+
+    @pytest.mark.asyncio
+    async def test_search_by_description(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test searching entities by their description field."""
+        from lorekeeper.db.models import Entity
+
+        # Create entity with detailed description
+        entity = Entity(
+            world_id=test_world.id,
+            type="Location",
+            canonical_name="The Shattered Citadel",
+            summary="Ruins of an ancient fortress",
+            description="The Shattered Citadel stands atop Mount Desolation, a monument to the last great kingdom. Its towers crumble from centuries of siege and abandonment. Within its walls, legends say, lies treasure beyond measure.",
+        )
+        db_session.add(entity)
+        await db_session.flush()
+
+        # Search by description keyword
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "Mount Desolation"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "The Shattered Citadel" for e in data["results"])
+
+    @pytest.mark.asyncio
+    async def test_search_cross_field_matching(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test that search returns results from multiple field matches."""
+        from lorekeeper.db.models import Entity
+
+        # Create multiple entities with the search term in different fields
+        entity1 = Entity(
+            world_id=test_world.id,
+            type="Character",
+            canonical_name="Dragon Lord",
+            summary="Peaceful sage",
+        )
+        entity2 = Entity(
+            world_id=test_world.id,
+            type="Location",
+            canonical_name="Dragon's Peak",
+            summary="A mountain",
+        )
+        entity3 = Entity(
+            world_id=test_world.id,
+            type="Artifact",
+            canonical_name="Ancient Sword",
+            description="A legendary blade forged in dragon fire",
+        )
+        db_session.add_all([entity1, entity2, entity3])
+        await db_session.flush()
+
+        # Search for "dragon"
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "dragon"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should find all three entities
+        assert data["total"] >= 3
+        names = {e["canonical_name"] for e in data["results"]}
+        assert "Dragon Lord" in names
+        assert "Dragon's Peak" in names
+        assert "Ancient Sword" in names
+
+    @pytest.mark.asyncio
+    async def test_search_case_insensitive(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test that search is case-insensitive across all fields."""
+        from lorekeeper.db.models import Entity
+
+        entity = Entity(
+            world_id=test_world.id,
+            type="Character",
+            canonical_name="Phoenix Rising",
+            summary="A majestic firebird reborn from ashes",
+        )
+        db_session.add(entity)
+        await db_session.flush()
+
+        # Search with different case
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "FIREBIRD"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Phoenix Rising" for e in data["results"])
+
+    @pytest.mark.asyncio
+    async def test_search_partial_word_match(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test that search matches partial words."""
+        from lorekeeper.db.models import Entity
+
+        entity = Entity(
+            world_id=test_world.id,
+            type="Character",
+            canonical_name="Elara Moonwhisper",
+            summary="An elven ranger of the moonlit woods",
+        )
+        db_session.add(entity)
+        await db_session.flush()
+
+        # Search for partial word
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={"query": "moon"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+        assert any(e["canonical_name"] == "Elara Moonwhisper" for e in data["results"])
+
+    @pytest.mark.asyncio
+    async def test_search_combined_with_type_filter(
+        self, client: AsyncClient, test_world: World, db_session: AsyncSession, override_get_session
+    ) -> None:
+        """Test that search query works with type filtering."""
+        from lorekeeper.db.models import Entity
+
+        # Create a unique character with a unique name
+        char = Entity(
+            world_id=test_world.id,
+            type="Character",
+            canonical_name="Unique Wizard Aldaron",
+            summary="A wizard of exceptional skill",
+        )
+        db_session.add(char)
+        await db_session.flush()
+
+        # Search for unique name with type filter
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities/search",
+            json={
+                "query": "Aldaron",
+                "entity_type": "Character",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # All results should be Character type
+        assert all(e["type"] == "Character" for e in data["results"])
+        # Should find our unique character
+        assert any(e["canonical_name"] == "Unique Wizard Aldaron" for e in data["results"])

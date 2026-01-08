@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from lorekeeper.api.routes import documents, entities, retrieval, worlds
+from lorekeeper.api.routes import documents, entities, mentions, retrieval, worlds
 
 app: FastAPI = FastAPI(
     title="LoreKeeper",
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(worlds.router)
 app.include_router(entities.router)
 app.include_router(documents.router)
+app.include_router(mentions.router)
 app.include_router(retrieval.router)
 
 
