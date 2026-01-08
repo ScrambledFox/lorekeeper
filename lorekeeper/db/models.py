@@ -2,6 +2,8 @@
 Database models for LoreKeeper.
 """
 
+# mypy: disable-error-code=unused-ignore
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
