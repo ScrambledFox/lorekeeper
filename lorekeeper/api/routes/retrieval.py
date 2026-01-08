@@ -21,9 +21,9 @@ embedding_service = EmbeddingService(model_name="mock")
 
 @router.post("/retrieve", response_model=RetrievalResponse)
 async def retrieve(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
     world_id: UUID,
     request: RetrievalRequest,
-    session: Annotated[AsyncSession, Depends(get_async_session)] = None,
 ) -> RetrievalResponse:
     """
     Retrieve entities and/or snippets from a world using semantic search.
@@ -101,4 +101,4 @@ async def retrieve(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Retrieval failed: {str(e)}",
-        )
+        ) from e

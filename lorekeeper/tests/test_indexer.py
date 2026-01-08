@@ -144,7 +144,7 @@ class TestEmbeddingService:
         embedding2 = service.embed("The king ruled the realm")
 
         # Calculate cosine similarity
-        dot_product = sum(a * b for a, b in zip(embedding1, embedding2))
+        dot_product = sum(a * b for a, b in zip(embedding1, embedding2, strict=False))
 
         # Similar texts should have positive correlation
         assert dot_product > 0

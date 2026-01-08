@@ -3,18 +3,21 @@ Pytest configuration and shared fixtures for integration tests.
 """
 
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from lorekeeper.api.main import app
 from lorekeeper.db.database import Base, get_async_session
 from lorekeeper.db.models import Document, DocumentSnippet, Entity, World
-
 
 # Test database URL
 TEST_DATABASE_URL = (
@@ -25,13 +28,13 @@ TEST_DATABASE_URL = (
 @pytest.fixture(scope="session")
 def event_loop():
     """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
 @pytest.fixture(scope="session")
-async def test_engine():
+async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create test database engine."""
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
@@ -55,9 +58,9 @@ async def test_engine():
 
 
 @pytest.fixture
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     """Create test database session."""
-    async_session = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
         yield session
@@ -72,10 +75,10 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-def override_get_session(db_session):
+def override_get_session(db_session: AsyncSession):
     """Override the get_async_session dependency."""
 
-    async def _override():
+    async def _override() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
     app.dependency_overrides[get_async_session] = _override
@@ -84,9 +87,10 @@ def override_get_session(db_session):
 
 
 @pytest.fixture
-async def client(override_get_session):
+async def client() -> AsyncGenerator[AsyncClient, None]:
     """Create test client."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
 

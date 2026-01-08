@@ -2,8 +2,6 @@
 Tests for the retrieval service.
 """
 
-import pytest
-
 from lorekeeper.api.services.retrieval import RetrievalService
 
 
@@ -15,7 +13,7 @@ class TestRetrievalService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [1.0, 0.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == 1.0
 
@@ -24,7 +22,7 @@ class TestRetrievalService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == 0.0
 
@@ -33,7 +31,7 @@ class TestRetrievalService:
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [-1.0, 0.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == -1.0
 
@@ -42,13 +40,13 @@ class TestRetrievalService:
         vec1 = [1.0, 1.0, 0.0]
         vec2 = [1.0, 1.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert abs(similarity - 1.0) < 0.0001
 
     def test_cosine_similarity_empty_vectors(self) -> None:
         """Test cosine similarity with empty vectors."""
-        similarity = RetrievalService._cosine_similarity([], [])
+        similarity = RetrievalService.cosine_similarity([], [])
         assert similarity == 0.0
 
     def test_cosine_similarity_zero_magnitude(self) -> None:
@@ -56,7 +54,7 @@ class TestRetrievalService:
         vec1 = [0.0, 0.0, 0.0]
         vec2 = [1.0, 0.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == 0.0
 
@@ -65,7 +63,7 @@ class TestRetrievalService:
         vec1 = [1.0, 0.0]
         vec2 = [1.0, 0.0, 0.0]
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == 0.0
 
@@ -74,16 +72,16 @@ class TestRetrievalService:
 
         # Simulate numpy array-like objects with tolist method
         class ArrayLike:
-            def __init__(self, data):
+            def __init__(self, data: list[float]):
                 self.data = data
 
-            def tolist(self):
+            def tolist(self) -> list[float]:
                 return self.data
 
         vec1 = ArrayLike([1.0, 0.0, 0.0])
         vec2 = ArrayLike([1.0, 0.0, 0.0])
 
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert similarity == 1.0
 
@@ -95,6 +93,6 @@ class TestRetrievalService:
         # Both have magnitude sqrt(2)
         # dot product = 1*1 + 1*0 + 0*1 = 1
         # similarity = 1 / (sqrt(2) * sqrt(2)) = 1/2 = 0.5
-        similarity = RetrievalService._cosine_similarity(vec1, vec2)
+        similarity = RetrievalService.cosine_similarity(vec1, vec2)
 
         assert abs(similarity - 0.5) < 0.0001

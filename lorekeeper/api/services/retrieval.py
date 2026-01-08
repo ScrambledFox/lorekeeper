@@ -2,10 +2,11 @@
 Retrieval service for LoreKeeper - handles vector search and filtering logic.
 """
 
-from typing import Optional
+from collections.abc import Sequence
+from typing import Protocol, runtime_checkable
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lorekeeper.api.schemas import (
@@ -15,39 +16,46 @@ from lorekeeper.api.schemas import (
 from lorekeeper.db.models import Document, DocumentSnippet, Entity
 
 
+@runtime_checkable
+class _HasToList(Protocol):
+    """Protocol for objects that expose a list-like view."""
+
+    def tolist(self) -> list[float]: ...
+
+
 class RetrievalService:
     """Service for retrieving entities and snippets with various policies."""
 
     @staticmethod
-    def _cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
+    def cosine_similarity(
+        vec1: Sequence[float] | _HasToList, vec2: Sequence[float] | _HasToList
+    ) -> float:
         """Calculate cosine similarity between two vectors."""
-        # Convert to list if needed (pgvector returns numpy arrays)
-        if hasattr(vec1, "tolist"):
-            vec1 = vec1.tolist()
-        if hasattr(vec2, "tolist"):
-            vec2 = vec2.tolist()
+        vec1_list = vec1.tolist() if isinstance(vec1, _HasToList) else list(vec1)
+        vec2_list = vec2.tolist() if isinstance(vec2, _HasToList) else list(vec2)
 
-        if not isinstance(vec1, list) or not isinstance(vec2, list):
-            return 0.0
-        if len(vec1) == 0 or len(vec2) == 0 or len(vec1) != len(vec2):
+        if len(vec1_list) == 0 or len(vec2_list) == 0 or len(vec1_list) != len(vec2_list):
             return 0.0
 
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        magnitude1 = sum(a * a for a in vec1) ** 0.5
-        magnitude2 = sum(b * b for b in vec2) ** 0.5
+        dot_product = sum(a * b for a, b in zip(vec1_list, vec2_list, strict=True))
+        magnitude1 = sum(a * a for a in vec1_list) ** 0.5
+        magnitude2 = sum(b * b for b in vec2_list) ** 0.5
 
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
 
-        return dot_product / (magnitude1 * magnitude2)
+        return float(dot_product / (magnitude1 * magnitude2))
+
+    # Backward-compatible alias
+    _cosine_similarity = cosine_similarity
 
     @staticmethod
     async def retrieve_entities(
         session: AsyncSession,
         world_id: UUID,
         query: str,
-        entity_types: Optional[list[str]] = None,
-        tags: Optional[list[str]] = None,
+        entity_types: list[str] | None = None,
+        tags: list[str] | None = None,
         limit: int = 10,
     ) -> list[RetrievalEntityCard]:
         """
@@ -100,9 +108,9 @@ class RetrievalService:
     async def retrieve_snippets(
         session: AsyncSession,
         world_id: UUID,
-        query_embedding: list[float],
+        query_embedding: list[float] | None,
         policy: str = "HYBRID",
-        document_kinds: Optional[list[str]] = None,
+        document_kinds: list[str] | None = None,
         limit: int = 10,
     ) -> list[RetrievalSnippetCard]:
         """
@@ -153,7 +161,7 @@ class RetrievalService:
                     and query_embedding is not None
                     and len(query_embedding) > 0
                 ):
-                    similarity_score = RetrievalService._cosine_similarity(
+                    similarity_score = RetrievalService.cosine_similarity(
                         snippet.embedding, query_embedding
                     )
 
@@ -169,9 +177,9 @@ class RetrievalService:
                     document_mode=document.mode,
                     document_author=document.author,
                     in_world_date=document.in_world_date,
-                    reliability_label="CANON_SOURCE"
-                    if document.mode == "STRICT"
-                    else "MYTHIC_SOURCE",
+                    reliability_label=(
+                        "CANON_SOURCE" if document.mode == "STRICT" else "MYTHIC_SOURCE"
+                    ),
                     similarity_score=similarity_score,
                 )
                 cards_with_scores.append((card, similarity_score or 0.0))
@@ -199,7 +207,7 @@ class RetrievalService:
         world_id: UUID,
         query: str,
         policy: str = "HYBRID",
-        document_kinds: Optional[list[str]] = None,
+        document_kinds: list[str] | None = None,
         limit: int = 10,
     ) -> list[RetrievalSnippetCard]:
         """

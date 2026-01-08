@@ -243,8 +243,8 @@ class RetrievalResponse(BaseModel):
     policy: str
     total_results: int
 
-    entities: list[RetrievalEntityCard] = Field(default_factory=list)
-    snippets: list[RetrievalSnippetCard] = Field(default_factory=list)
+    entities: list[RetrievalEntityCard] = Field(default_factory=lambda: [])
+    snippets: list[RetrievalSnippetCard] = Field(default_factory=lambda: [])
 
     # Optional debug information
-    debug: dict | None = None
+    debug: dict[str, Any] | None = None
