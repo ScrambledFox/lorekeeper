@@ -50,6 +50,7 @@ async def get_world(
 
     return WorldResponse.model_validate(db_world, from_attributes=True)
 
+
 @router.get("", response_model=list[WorldResponse])
 async def list_worlds(
     session: Annotated[AsyncSession, Depends(get_async_session)],

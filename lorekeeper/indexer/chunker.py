@@ -3,7 +3,6 @@ Document indexing and embedding module for LoreKeeper.
 """
 
 import hashlib
-from typing import Optional
 
 
 class DocumentChunker:
