@@ -412,6 +412,91 @@ Deliverable for Phase 1: a working service where the book pipeline can call `/re
 
 ---
 
+# 9.1) Critical Domain Questions (Phase 2+ Planning)
+
+As you progress beyond Phase 1, the following questions will determine scope and architecture for Phase 2 and beyond. These represent decision points that will significantly impact design:
+
+## Question 1: Entity Relationships
+
+**Do you need entity relationships?** (e.g., "Location has ruler Entity", "Character is parent of Character")
+
+* **Current state**: Entities are isolated atoms. No structural relationships modeled.
+* **Workaround**: Encode relationships in description or tags (e.g., "current_ruler:King_Aldren_id").
+* **Phase 2 implication**:
+  * If YES: Add `entity_relationship` table with relationship type, source_entity, target_entity.
+  * Enable graph queries: "Find all people who rule Location X" or "Show family tree of House Y".
+  * Support validation: "Verify no cycles in parent_of relationships".
+* **Impact**: Graph reasoner, query optimization, entity embedding adjustments.
+
+## Question 2: Automated Contradiction Detection
+
+**Do you want automated contradiction detection?**
+
+* **Current state**: Not implemented. Manual process via HYBRID retrieval.
+* **Approach**: After retrieval, you manually review STRICT vs MYTHIC results and flag conflicts.
+* **Phase 2 implication**:
+  * If YES: Implement semantic reasoning layer.
+  * Add `contradiction_detector` service (heuristic or LLM-based).
+  * Populate `snippet_analysis` or `claim` table with contradiction scores.
+  * Enable queries: "Show all claims contradicting canon entity X".
+* **Impact**: LLM integration, contradiction resolution workflows, human review UIs.
+
+## Question 3: Entity Versioning / Audit Trail
+
+**Do you need entity versioning and update history?**
+
+* **Current state**: Entities are immutable once created (by design). No change log.
+* **Why immutable**: Prevents breaking citations in generated books.
+* **Phase 2 implication**:
+  * If YES: Implement `entity_version` table (already designed in schema section 3.2).
+  * Support "entity as of version X", rollback, change approval workflows.
+  * Track what changed, when, and by whom.
+  * Enable: "Show how King Aldren's description evolved across v0.1, v0.2, v0.3".
+* **Impact**: Backwards compatibility strategy, versioned snippet references, migration tooling.
+
+## Question 4: Explicit Truth Value Tracking
+
+**Should snippets/claims have explicit "is_true" fields?**
+
+* **Current state**: Truth is inferred from document mode (STRICT vs MYTHIC).
+  * STRICT snippets → assumed true (CANON_SOURCE).
+  * MYTHIC snippets → narratives of unknown truth (MYTHIC_SOURCE).
+* **Gap**: You cannot explicitly mark a MYTHIC snippet as "known false" or "in-world consensus".
+* **Phase 2 implication**:
+  * If YES: Add `claim_truth` enum to `claim` or `snippet_analysis` table.
+  * Values: `CANON_TRUE`, `CANON_FALSE`, `UNKNOWN`, `DISPUTED`, `IN_WORLD_TRUE`.
+  * Enable retrieval filters: "Show only CANON_TRUE facts" or "Show what NPCs believe (IN_WORLD_TRUE)".
+* **Impact**: Semantic differentiation, NPC knowledge bases, reader vs character POV.
+
+## Question 5: Direct Document-Entity Relationships
+
+**Should documents link to specific entities they're about?**
+
+* **Current state**: Documents are free-form text. Entity linking happens via:
+  * Document → Snippet → EntityMention → Entity (3 hops).
+* **Why indirect**: Allows snippets to mention multiple entities, supports contradiction scenarios.
+* **Phase 2 implication**:
+  * If YES: Add `document_entity` join table (optional, denormalized for performance).
+  * Fast query: "What documents mention King Aldren?"
+  * Support document-level entity tags: "This document is primarily about X and secondarily about Y".
+* **Impact**: Query performance, retrieval ranking, document summaries.
+
+## Question 6: Integration with Agentic Pipeline
+
+**How will LoreKeeper integrate with your writing agents?**
+
+* **Current state**: API is ready for agent calls, but no documented agent contract.
+* **Phase 2 implication**:
+  * If agents are stateful: LoreKeeper needs session/context management.
+  * If agents need to create entities/documents: add write validation, approval workflows.
+  * If agents need multi-turn reasoning: add retrieval caching, conversation context.
+  * Define strict prompt contracts (see section 10: "Prompting contract").
+* **Impact**: Agent framework choice, prompt engineering, feedback loops.
+
+---
+
+
+
 # 10) “Prompting contract” for downstream LLMs (critical context)
 
 Define a standard instruction the writing agents will follow when using LoreKeeper outputs.
