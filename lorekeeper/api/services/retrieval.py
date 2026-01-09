@@ -9,10 +9,7 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lorekeeper.api.schemas import (
-    RetrievalEntityCard,
-    RetrievalSnippetCard,
-)
+from lorekeeper.api.schemas import RetrievalEntityCard, RetrievalSnippetCard
 from lorekeeper.db.models import Document, DocumentSnippet, Entity
 
 
@@ -100,6 +97,7 @@ class RetrievalService:
                 summary=e.summary,
                 description=e.description,
                 tags=e.tags,
+                is_fiction=e.is_fiction,
             )
             for e in entities
         ]

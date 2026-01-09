@@ -18,6 +18,10 @@ class Settings:
         "DATABASE_URL",
         "postgresql://lorekeeper:lorekeeper_dev_password@localhost:5432/lorekeeper",
     )
+    TEST_DATABASE_URL: str = _get_env_str(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://lorekeeper:lorekeeper_dev_password@localhost/lorekeeper_test",
+    )
     ENVIRONMENT: str = _get_env_str("ENVIRONMENT", "development")
     DEBUG: bool = ENVIRONMENT == "development"
     API_TITLE: str = "LoreKeeper"

@@ -16,7 +16,7 @@ class TestCanonicalVsMythicRetrieval:
 
     @pytest.mark.asyncio
     async def test_retrieve_canonical_lore_only(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test retrieving only canonical (strict) lore."""
         world_id = test_world.id
@@ -61,7 +61,7 @@ class TestCanonicalVsMythicRetrieval:
 
     @pytest.mark.asyncio
     async def test_retrieve_mythic_lore_only(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test retrieving only mythic lore (legends, rumors, stories)."""
         world_id = test_world.id
@@ -106,7 +106,7 @@ class TestCanonicalVsMythicRetrieval:
 
     @pytest.mark.asyncio
     async def test_retrieve_hybrid_canonical_and_mythic(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test retrieving both canonical and mythic lore together (HYBRID)."""
         world_id = test_world.id
@@ -170,7 +170,7 @@ class TestLoreReliabilityLabels:
 
     @pytest.mark.asyncio
     async def test_canonical_source_label(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test that canonical sources are labeled as CANON_SOURCE."""
         world_id = test_world.id
@@ -213,7 +213,7 @@ class TestLoreReliabilityLabels:
 
     @pytest.mark.asyncio
     async def test_mythic_source_label(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test that mythic sources are labeled as MYTHIC_SOURCE."""
         world_id = test_world.id
@@ -260,7 +260,7 @@ class TestLoreFilteringByDocumentType:
 
     @pytest.mark.asyncio
     async def test_search_lore_by_document_kind(
-        self, client: AsyncClient, test_world: World, override_get_session
+        self, client: AsyncClient, test_world: World, override_get_session: bool
     ) -> None:
         """Test filtering retrieved lore by document kind."""
         world_id = test_world.id
@@ -298,7 +298,11 @@ class TestProvenanceInRetrieval:
 
     @pytest.mark.asyncio
     async def test_provenance_fields_in_snippet_response(
-        self, client: AsyncClient, test_world: World, test_document: Document, override_get_session
+        self,
+        client: AsyncClient,
+        test_world: World,
+        test_document: Document,
+        override_get_session: bool,
     ) -> None:
         """Test that snippet responses include full provenance information."""
         world_id = test_world.id

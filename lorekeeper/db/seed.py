@@ -40,6 +40,7 @@ async def seed_initial_world() -> None:
                 summary="Ruler of the Northern Kingdoms",
                 description="King Aldren ruled the Northern Kingdoms from the year 1000 to 1032. He was known for his diplomatic prowess and his love of ancient lore.",
                 tags=["ruler", "diplomat", "ancient_lore", "deceased"],
+                is_fiction=False,
                 status="ACTIVE",
                 created_at=utc_now(),
                 updated_at=utc_now(),
@@ -53,6 +54,7 @@ async def seed_initial_world() -> None:
                 summary="An ancient lake at the heart of the Northern Kingdoms",
                 description="Lake Silvermere is an ancient glacial lake surrounded by crystal caves. Its waters are said to reflect not only light but also glimpses of other times.",
                 tags=["ancient", "magical", "sacred"],
+                is_fiction=False,
                 status="ACTIVE",
                 created_at=utc_now(),
                 updated_at=utc_now(),
@@ -66,6 +68,21 @@ async def seed_initial_world() -> None:
                 summary="An order of scholars and mages",
                 description="The Circle of Whispers is an ancient order dedicated to preserving forbidden knowledge and studying the nature of reality itself.",
                 tags=["scholars", "mages", "secret", "ancient"],
+                is_fiction=False,
+                status="ACTIVE",
+                created_at=utc_now(),
+                updated_at=utc_now(),
+            ),
+            Entity(
+                id=uuid4(),
+                world_id=world_id,
+                type="Creature",
+                canonical_name="Scibble",
+                aliases=["Scibbles", "Star Scuttler"],
+                summary="A whimsical in-lore fantasy creature from tavern tales",
+                description="Scibbles are small, bioluminescent creatures said to inhabit the deeper caverns beneath Lake Silvermere. They are described as harmless and curious, with the ability to mimic sounds and lights. Most scholars dismiss them as myth, though some believe they are a real, undocumented species.",
+                tags=["fantasy", "creature", "undocumented", "bioluminescent"],
+                is_fiction=True,
                 status="ACTIVE",
                 created_at=utc_now(),
                 updated_at=utc_now(),
@@ -127,6 +144,8 @@ async def seed_initial_world() -> None:
         print("✓ Seed data created successfully")
         print("  - World: Aethermoor")
         print(f"  - Entities: {len(entities)}")
+        print("    - Fact entities: 3 (King Aldren, Lake Silvermere, The Circle of Whispers)")
+        print("    - Fiction entities: 1 (Scibble)")
         print(f"  - Documents: {len(documents)}")
 
 

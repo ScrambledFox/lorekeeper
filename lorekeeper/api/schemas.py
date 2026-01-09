@@ -39,6 +39,7 @@ class EntityCreate(BaseModel):
     summary: str | None = Field(None, max_length=500)
     description: str | None = Field(None, description="Full description")
     tags: list[str] = Field(default_factory=list, description="Tag list")
+    is_fiction: bool = Field(False, description="Whether this entity is fiction (in-lore) or fact")
 
 
 class EntityUpdate(BaseModel):
@@ -49,6 +50,7 @@ class EntityUpdate(BaseModel):
     summary: str | None = None
     description: str | None = None
     tags: list[str] | None = None
+    is_fiction: bool | None = None
     status: str | None = None
 
 
@@ -65,6 +67,7 @@ class EntityResponse(BaseModel):
     summary: str | None
     description: str | None
     tags: list[str]
+    is_fiction: bool
     status: str
     created_at: datetime
     updated_at: datetime
@@ -187,6 +190,7 @@ class RetrievalEntityCard(BaseModel):
     summary: str | None
     description: str | None
     tags: list[str]
+    is_fiction: bool
     reliability_label: str = "CANON"  # Always CANON for entities in Phase 1
 
 

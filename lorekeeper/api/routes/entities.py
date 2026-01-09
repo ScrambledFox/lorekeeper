@@ -32,6 +32,7 @@ async def create_entity(
             summary=entity.summary,
             description=entity.description,
             tags=entity.tags,
+            is_fiction=entity.is_fiction,
         )
         session.add(db_entity)
         await session.commit()

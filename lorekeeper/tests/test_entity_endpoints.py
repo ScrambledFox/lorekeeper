@@ -485,3 +485,88 @@ class TestEnhancedEntitySearch:
         assert all(e["type"] == "Character" for e in data["results"])
         # Should find our unique character
         assert any(e["canonical_name"] == "Unique Wizard Aldaron" for e in data["results"])
+
+
+class TestEntityFictionStatus:
+    """Test suite for distinguishing between Fact and Fiction entities."""
+
+    @pytest.mark.asyncio
+    async def test_create_fact_entity(self, client: AsyncClient, test_world: World) -> None:
+        """Test creating a fact entity (is_fiction=False)."""
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities",
+            json={
+                "type": "Character",
+                "canonical_name": "King Aldren",
+                "summary": "A historical ruler",
+                "is_fiction": False,
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["canonical_name"] == "King Aldren"
+        assert data["is_fiction"] is False
+
+    @pytest.mark.asyncio
+    async def test_create_fiction_entity(self, client: AsyncClient, test_world: World) -> None:
+        """Test creating a fiction entity (is_fiction=True)."""
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities",
+            json={
+                "type": "Creature",
+                "canonical_name": "Scibble",
+                "summary": "A whimsical in-lore fantasy creature",
+                "is_fiction": True,
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["canonical_name"] == "Scibble"
+        assert data["is_fiction"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_entity_defaults_to_fact(
+        self, client: AsyncClient, test_world: World
+    ) -> None:
+        """Test that entities default to is_fiction=False if not specified."""
+        response = await client.post(
+            f"/worlds/{test_world.id}/entities",
+            json={
+                "type": "Location",
+                "canonical_name": "Lake Silvermere",
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["is_fiction"] is False
+
+    @pytest.mark.asyncio
+    async def test_update_entity_fiction_status(
+        self, client: AsyncClient, test_entity: Entity
+    ) -> None:
+        """Test updating an entity's fiction status."""
+        response = await client.patch(
+            f"/worlds/{test_entity.world_id}/entities/{test_entity.id}",
+            json={
+                "is_fiction": True,
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_fiction"] is True
+
+    @pytest.mark.asyncio
+    async def test_retrieve_entity_includes_fiction_status(
+        self, client: AsyncClient, test_entity: Entity
+    ) -> None:
+        """Test that retrieved entities include is_fiction field."""
+        response = await client.get(f"/worlds/{test_entity.world_id}/entities/{test_entity.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "is_fiction" in data
+        assert isinstance(data["is_fiction"], bool)
