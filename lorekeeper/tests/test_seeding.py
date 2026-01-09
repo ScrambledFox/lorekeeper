@@ -236,10 +236,10 @@ class TestSeedInitialWorld:
         result = await db_session.execute(
             select(Entity).where(Entity.canonical_name == "AliasTest")
         )
-        entity = result.scalars().first()
-        assert entity is not None
-        assert isinstance(entity.aliases, list)
-        assert len(entity.aliases) > 0
+        fetched_entity = result.scalars().first()
+        assert fetched_entity is not None
+        assert isinstance(fetched_entity.aliases, list)
+        assert len(fetched_entity.aliases) > 0
 
     async def test_seeded_entities_have_tags(
         self,
@@ -260,9 +260,9 @@ class TestSeedInitialWorld:
         await db_session.flush()
 
         result = await db_session.execute(select(Entity).where(Entity.canonical_name == "TagTest"))
-        entity = result.scalars().first()
-        assert entity is not None
-        assert isinstance(entity.tags, list)
+        fetched_entity = result.scalars().first()
+        assert fetched_entity is not None
+        assert isinstance(fetched_entity.tags, list)
 
     async def test_seeded_documents_have_provenance(
         self,
@@ -283,10 +283,10 @@ class TestSeedInitialWorld:
         await db_session.flush()
 
         result = await db_session.execute(select(Document).where(Document.title == "ProvenanceDoc"))
-        doc = result.scalars().first()
-        assert doc is not None
-        assert doc.provenance is not None
-        assert isinstance(doc.provenance, dict)
+        fetched_doc = result.scalars().first()
+        assert fetched_doc is not None
+        assert fetched_doc.provenance is not None
+        assert isinstance(fetched_doc.provenance, dict)
 
     async def test_seed_entity_types_are_valid(
         self,
@@ -393,15 +393,15 @@ class TestSeededDataIntegrity:
         result = await db_session.execute(
             select(Entity).where(Entity.canonical_name == "CompleteEntity")
         )
-        entity = result.scalars().first()
+        fetched_entity = result.scalars().first()
 
-        assert entity is not None
-        assert entity.type == "Character"
-        assert entity.is_fiction is False
-        assert len(entity.aliases) > 0
-        assert entity.summary is not None
-        assert entity.description is not None
-        assert len(entity.tags) > 0
+        assert fetched_entity is not None
+        assert fetched_entity.type == "Character"
+        assert fetched_entity.is_fiction is False
+        assert len(fetched_entity.aliases) > 0
+        assert fetched_entity.summary is not None
+        assert fetched_entity.description is not None
+        assert len(fetched_entity.tags) > 0
 
     async def test_fiction_entity_marked_correctly(
         self,
@@ -425,11 +425,11 @@ class TestSeededDataIntegrity:
         result = await db_session.execute(
             select(Entity).where(Entity.canonical_name == "FictionalBeast")
         )
-        entity = result.scalars().first()
+        fetched_entity = result.scalars().first()
 
-        assert entity is not None
-        assert entity.is_fiction is True
-        assert entity.type == "Creature"
+        assert fetched_entity is not None
+        assert fetched_entity.is_fiction is True
+        assert fetched_entity.type == "Creature"
 
     async def test_strict_document_correct_mode(
         self,
@@ -449,11 +449,11 @@ class TestSeededDataIntegrity:
         await db_session.flush()
 
         result = await db_session.execute(select(Document).where(Document.title == "Strict_Source"))
-        doc = result.scalars().first()
+        fetched_doc = result.scalars().first()
 
-        assert doc is not None
-        assert doc.mode == "STRICT"
-        assert doc.kind == "TEXTBOOK"
+        assert fetched_doc is not None
+        assert fetched_doc.mode == "STRICT"
+        assert fetched_doc.kind == "TEXTBOOK"
 
     async def test_mythic_document_correct_mode(
         self,
@@ -473,8 +473,8 @@ class TestSeededDataIntegrity:
         await db_session.flush()
 
         result = await db_session.execute(select(Document).where(Document.title == "Mythic_Tale"))
-        doc = result.scalars().first()
+        fetched_doc = result.scalars().first()
 
-        assert doc is not None
-        assert doc.mode == "MYTHIC"
-        assert doc.kind == "RUMOR"
+        assert fetched_doc is not None
+        assert fetched_doc.mode == "MYTHIC"
+        assert fetched_doc.kind == "RUMOR"

@@ -1,8 +1,6 @@
-"""
-Tests for concurrent operations and database constraint handling.
-"""
+"""Tests for concurrent operations and database constraint handling."""
 
-from uuid import uuid4
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -25,8 +23,8 @@ class TestConcurrentEntityCreation:
         """Test creating multiple entities sequentially (not truly concurrent due to session constraints)."""
         # Note: AsyncSession doesn't support true concurrent operations on a single session.
         # This test creates entities sequentially but verifies they're all accessible.
-        entities = []
-        for _ in range(5):
+        entities: list[Entity] = []
+        for i in range(5):
             entity = Entity(
                 world_id=test_world.id,
                 type="Character",
@@ -54,7 +52,7 @@ class TestConcurrentEntityCreation:
     ) -> None:
         """Test updating the same entity multiple times."""
         # Update entity description multiple times
-        for _ in range(3):
+        for i in range(3):
             result = await db_session.execute(select(Entity).where(Entity.id == test_entity.id))
             entity = result.scalars().first()
             if entity:
@@ -65,6 +63,7 @@ class TestConcurrentEntityCreation:
         result = await db_session.execute(select(Entity).where(Entity.id == test_entity.id))
         final_entity = result.scalars().first()
         assert final_entity is not None
+        assert final_entity.description is not None
         assert "Updated description" in final_entity.description
 
 
@@ -92,12 +91,13 @@ class TestDatabaseConstraints:
     async def test_entity_world_id_nullable_behavior(
         self,
         db_session: AsyncSession,
+        test_world: World,
     ) -> None:
         """Test that entity world_id is required field."""
         # The world_id is required by schema, but the database may not enforce it
         # Test that we handle this correctly
         entity = Entity(
-            world_id=uuid4(),  # Use a valid UUID
+            world_id=test_world.id,
             type="Character",
             canonical_name="Test",
             aliases=["Test"],
@@ -121,8 +121,8 @@ class TestConcurrentAPIRequests:
         test_world: World,
     ) -> None:
         """Test creating multiple entities sequentially via API."""
-        results = []
-        for _ in range(5):
+        results: list[dict[str, Any]] = []
+        for i in range(5):
             response = await client.post(
                 f"/worlds/{test_world.id}/entities",
                 json={
@@ -150,7 +150,7 @@ class TestConcurrentAPIRequests:
         test_entity: Entity,
     ) -> None:
         """Test retrieving entities multiple times via API."""
-        results = []
+        results: list[dict[str, Any]] = []
         for _ in range(10):
             response = await client.get(f"/worlds/{test_world.id}/entities/{test_entity.id}")
             results.append(response.json())
@@ -167,7 +167,7 @@ class TestConcurrentAPIRequests:
     ) -> None:
         """Test searching entities sequentially via API."""
         queries = ["test", "hero", "character"]
-        results = []
+        results: list[dict[str, Any]] = []
         for query in queries:
             response = await client.post(
                 f"/worlds/{test_world.id}/entities/search",
@@ -280,12 +280,12 @@ class TestParallelQueries:
         db_session: AsyncSession,
     ) -> None:
         """Test that multiple queries can be executed sequentially."""
-        results_list = []
+        results_list: list[list[Entity]] = []
         for _ in range(5):
             result = await db_session.execute(
                 select(Entity).where(Entity.world_id == test_world.id)
             )
-            results_list.append(result.scalars().all())
+            results_list.append(list(result.scalars().all()))
 
         # All should complete
         assert len(results_list) == 5
