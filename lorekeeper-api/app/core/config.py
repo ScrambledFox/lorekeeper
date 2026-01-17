@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: str = "https://s3.amazonaws.com"
     S3_PRESIGNED_URL_EXPIRY_SECONDS: int = 3600
 
+    # AWS SQS Job Queue settings
+    SQS_QUEUE_NAME: str = "lorekeeper-jobs"
+    SQS_REGION: str = "us-east-1"
+
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100

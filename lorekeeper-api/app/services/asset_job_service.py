@@ -1,5 +1,6 @@
 """Asset job service for handling asset creation and job operations."""
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -10,6 +11,8 @@ from app.repositories.assets import AssetRepository
 from app.services.asset_response_builder import build_full_job_response
 from app.utils.asset_validation import validate_asset_job_create_request
 from app.utils.hashing import compute_input_hash, extract_uuids_from_references
+
+logger = logging.getLogger(__name__)
 
 
 async def create_lore_snapshot(derivation_data: dict) -> dict | None:
@@ -150,11 +153,13 @@ async def create_job_and_derivation(
     source_id: UUID | None,
     prompt_spec_dict: dict,
     input_hash: str,
+    publish_to_queue: bool = True,
 ) -> AssetJobFullResponse:
     """Create a new asset job and its derivation.
 
     Creates both the job record and the derivation record, linking all
-    referenced claims, entities, and source chunks.
+    referenced claims, entities, and source chunks. Optionally publishes
+    to the job queue for processing.
 
     Args:
         asset_repo: Asset repository instance
@@ -167,6 +172,7 @@ async def create_job_and_derivation(
         source_id: Optional source UUID referenced
         prompt_spec_dict: Normalized prompt specification
         input_hash: Hash of job inputs for idempotency
+        publish_to_queue: Whether to publish job to queue (default: True)
 
     Returns:
         Full job response with derivation
@@ -200,5 +206,22 @@ async def create_job_and_derivation(
     await session.flush()
     derivation = await asset_repo.get_derivation_by_job_id(session, db_job.id)
     await session.commit()
+
+    # Publish to queue if enabled
+    if publish_to_queue:
+        try:
+            from app.services.job_producer import get_job_producer
+
+            producer = await get_job_producer()
+            await producer.publish_asset_job(
+                asset_repo=asset_repo,
+                session=session,
+                asset_job=db_job,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to publish asset job {db_job.id} to queue: {e}. "
+                f"Job created successfully but won't be processed until manually published."
+            )
 
     return build_full_job_response(db_job, derivation, None)
