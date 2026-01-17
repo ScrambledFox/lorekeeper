@@ -2,33 +2,17 @@
 Configuration module for LoreKeeper.
 """
 
-import os
+from pydantic_settings import BaseSettings
 
 
-def get_env_str(name: str, default: str) -> str:
-    """Return an environment variable as a string with a safe default."""
-    value = os.getenv(name)
-    return value if value is not None else default
-
-
-def get_env_int(name: str, default: int) -> int:
-    """Return an environment variable as an integer with a safe default."""
-    value = os.getenv(name)
-    return int(value) if value is not None else default
-
-
-class Settings:
+class Settings(BaseSettings):
     """Application settings with proper typing."""
 
-    DATABASE_URL: str = get_env_str(
-        "DATABASE_URL",
-        "postgresql://lorekeeper:lorekeeper_dev_password@localhost:5432/lorekeeper",
+    DATABASE_URL: str = "postgresql://lorekeeper:lorekeeper_dev_password@localhost:5432/lorekeeper"
+    TEST_DATABASE_URL: str = (
+        "postgresql+asyncpg://lorekeeper:lorekeeper_dev_password@localhost/lorekeeper_test"
     )
-    TEST_DATABASE_URL: str = get_env_str(
-        "TEST_DATABASE_URL",
-        "postgresql+asyncpg://lorekeeper:lorekeeper_dev_password@localhost/lorekeeper_test",
-    )
-    ENVIRONMENT: str = get_env_str("ENVIRONMENT", "development")
+    ENVIRONMENT: str = "development"
     DEBUG: bool = ENVIRONMENT == "development"
     API_TITLE: str = "LoreKeeper"
     API_VERSION: str = "0.1.0"
@@ -42,6 +26,8 @@ class Settings:
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_RECYCLE: int = 3600
     DB_ECHO: bool = DEBUG
+
+    EMBEDDING_PROVIDER: str = "mock"
 
     # OpenAI settings
     OPENAI_API_KEY: str = ""
