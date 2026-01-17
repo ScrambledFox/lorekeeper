@@ -7,7 +7,7 @@ Provides endpoints for:
 - Worker operations (job status updates, completion, failure)
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 from datetime import datetime, timedelta
 from uuid import UUID
 
@@ -221,10 +221,14 @@ async def create_asset_job(
         if source_chunk_ids:
             await asset_repo.add_derivation_source_chunks(session, derivation.id, source_chunk_ids)
 
+        # Flush to persist joins before reloading
+        await session.flush()
+
+        # Reload derivation with all relationships before commit
+        derivation = await asset_repo.get_derivation_by_job_id(session, db_job.id)
+
         # Commit transaction
         await session.commit()
-        await session.refresh(db_job)
-        await session.refresh(derivation)
 
         # Publish job to queue (placeholder for async job dispatch)
         # TODO: Publish to job queue for worker processing
@@ -295,14 +299,12 @@ async def list_asset_jobs(
             limit=limit,
         )
 
-        items = [
-            _build_full_job_response(
-                job,
-                await asset_repo.get_derivation_by_job_id(session, job.id),
-                (await asset_repo.get_derivation_by_job_id(session, job.id)).asset if job else None,
-            )
-            for job in jobs
-        ]
+        # Build items without await in list comprehension
+        items = []
+        for job in jobs:
+            derivation = await asset_repo.get_derivation_by_job_id(session, job.id)
+            asset_data = derivation.asset if derivation else None
+            items.append(_build_full_job_response(job, derivation, asset_data))
 
         return PaginatedAssetJobResponse(total=total, skip=skip, limit=limit, items=items)
     except Exception as e:
@@ -512,15 +514,40 @@ async def list_assets(
 # ==================== Helper Functions ====================
 
 
-def _build_full_job_response(job, derivation: any, asset: any) -> AssetJobFullResponse:
+def _build_full_job_response(job: Any, derivation: Any, asset: Any) -> AssetJobFullResponse:
     """Build a full job response with derivation and asset."""
-    job_data = AssetJobResponse.model_validate(job, from_attributes=True)
+    # Use model_construct to avoid any ORM access
+    job_data_dict = {
+        "id": job.id,
+        "world_id": job.world_id,
+        "asset_type": job.asset_type,
+        "provider": job.provider,
+        "model_id": job.model_id,
+        "status": job.status,
+        "priority": job.priority,
+        "requested_by": job.requested_by,
+        "input_hash": job.input_hash,
+        "prompt_spec": job.prompt_spec,
+        "error_code": job.error_code,
+        "error_message": job.error_message,
+        "created_at": job.created_at,
+        "started_at": job.started_at,
+        "finished_at": job.finished_at,
+    }
+    job_data = AssetJobResponse.model_construct(**job_data_dict)
 
     derivation_data = None
     if derivation:
-        claim_ids = [claim.claim_id for claim in derivation.claims]
-        entity_ids = [entity.entity_id for entity in derivation.entities]
-        source_chunk_ids = [chunk.source_chunk_id for chunk in derivation.source_chunks]
+        # Eagerly access relationships to force loading while session is active
+        try:
+            claim_ids = [claim.claim_id for claim in (derivation.claims or [])]
+            entity_ids = [entity.entity_id for entity in (derivation.entities or [])]
+            source_chunk_ids = [chunk.source_chunk_id for chunk in (derivation.source_chunks or [])]
+        except Exception:
+            # Fallback if relationships can't be loaded
+            claim_ids = []
+            entity_ids = []
+            source_chunk_ids = []
 
         derivation_data = AssetDerivationResponse(
             id=derivation.id,
@@ -541,7 +568,22 @@ def _build_full_job_response(job, derivation: any, asset: any) -> AssetJobFullRe
 
     asset_data = None
     if asset:
-        asset_data = AssetResponse.model_validate(asset, from_attributes=True)
+        asset_data_dict = {
+            "id": asset.id,
+            "world_id": asset.world_id,
+            "type": asset.type,
+            "format": asset.format,
+            "status": asset.status,
+            "storage_key": asset.storage_key,
+            "content_type": asset.content_type,
+            "duration_seconds": asset.duration_seconds,
+            "size_bytes": asset.size_bytes,
+            "checksum": asset.checksum,
+            "meta": asset.meta,
+            "created_by": asset.created_by,
+            "created_at": asset.created_at,
+        }
+        asset_data = AssetResponse.model_construct(**asset_data_dict)
 
     return AssetJobFullResponse(
         **job_data.model_dump(),

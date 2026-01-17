@@ -62,7 +62,7 @@ class AssetBase(BaseModel):
     duration_seconds: int | None = Field(None, description="Duration in seconds for media")
     size_bytes: int | None = Field(None, description="File size in bytes")
     checksum: str | None = Field(None, description="File checksum")
-    metadata: AssetMetadata | None = Field(None, description="Additional metadata")
+    meta: AssetMetadata | None = Field(None, description="Additional metadata")
 
 
 class AssetCreate(AssetBase):

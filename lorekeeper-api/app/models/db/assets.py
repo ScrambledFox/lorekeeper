@@ -45,7 +45,7 @@ class Asset(Base):
     duration_seconds: Mapped[int | None] = mapped_column(nullable=True)
     size_bytes: Mapped[int | None] = mapped_column(nullable=True)
     checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utc_now, nullable=False, index=True

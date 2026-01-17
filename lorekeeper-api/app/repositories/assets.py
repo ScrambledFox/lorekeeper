@@ -43,7 +43,7 @@ class AssetRepository:
             duration_seconds=asset.duration_seconds,
             size_bytes=asset.size_bytes,
             checksum=asset.checksum,
-            metadata=asset.metadata.model_dump() if asset.metadata else None,
+            meta=asset.meta.model_dump() if asset.meta else None,
             created_by=asset.created_by,
         )
         session.add(db_asset)

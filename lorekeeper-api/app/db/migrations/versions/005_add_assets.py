@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column("duration_seconds", sa.Integer(), nullable=True),
         sa.Column("size_bytes", sa.BigInteger(), nullable=True),
         sa.Column("checksum", sa.String(64), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("meta", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("created_by", sa.String(255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),

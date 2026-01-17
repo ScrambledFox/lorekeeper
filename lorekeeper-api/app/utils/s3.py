@@ -1,6 +1,7 @@
 """S3/Object Storage client and utilities for asset uploads/downloads."""
 
 from datetime import datetime, timedelta
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -46,7 +47,7 @@ class S3Client:
         except ClientError as e:
             raise InternalServerErrorException(
                 message=f"Failed to generate download presigned URL: {str(e)}"
-            )
+            ) from e
 
     def generate_upload_presigned_url(
         self, object_key: str, content_type: str | None = None
@@ -78,7 +79,7 @@ class S3Client:
         except ClientError as e:
             raise InternalServerErrorException(
                 message=f"Failed to generate upload presigned URL: {str(e)}"
-            )
+            ) from e
 
     def generate_multipart_upload_presigned_urls(
         self, object_key: str, part_count: int, content_type: str | None = None
@@ -129,7 +130,7 @@ class S3Client:
         except ClientError as e:
             raise InternalServerErrorException(
                 message=f"Failed to initiate multipart upload: {str(e)}"
-            )
+            ) from e
 
     def complete_multipart_upload(
         self, object_key: str, upload_id: str, part_etags: list[dict]
@@ -164,7 +165,7 @@ class S3Client:
         except ClientError as e:
             raise InternalServerErrorException(
                 message=f"Failed to complete multipart upload: {str(e)}"
-            )
+            ) from e
 
     def abort_multipart_upload(self, object_key: str, upload_id: str) -> None:
         """
@@ -186,7 +187,7 @@ class S3Client:
         except ClientError as e:
             raise InternalServerErrorException(
                 message=f"Failed to abort multipart upload: {str(e)}"
-            )
+            ) from e
 
     def head_object(self, object_key: str) -> dict | None:
         """
@@ -215,7 +216,9 @@ class S3Client:
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 return None
-            raise InternalServerErrorException(message=f"Failed to get object metadata: {str(e)}")
+            raise InternalServerErrorException(
+                message=f"Failed to get object metadata: {str(e)}"
+            ) from e
 
     def delete_object(self, object_key: str) -> None:
         """
@@ -233,7 +236,7 @@ class S3Client:
                 Key=object_key,
             )
         except ClientError as e:
-            raise InternalServerErrorException(message=f"Failed to delete object: {str(e)}")
+            raise InternalServerErrorException(message=f"Failed to delete object: {str(e)}") from e
 
     def delete_objects(self, object_keys: list[str]) -> None:
         """
@@ -255,7 +258,7 @@ class S3Client:
                 Delete={"Objects": delete_requests},
             )
         except ClientError as e:
-            raise InternalServerErrorException(message=f"Failed to delete objects: {str(e)}")
+            raise InternalServerErrorException(message=f"Failed to delete objects: {str(e)}") from e
 
 
 # Singleton instance
