@@ -3,25 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lorekeeper"
+name = "lorekeeper-api"
 version = "0.1.0"
 description = "Lore and knowledge management system for generated worlds"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
-authors = [
-    {name = "LoreKeeper Contributors"}
-]
+license = { text = "MIT" }
 keywords = ["lore", "knowledge", "worldbuilding", "embeddings", "vector-search"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
 
 dependencies = [
     "fastapi>=0.109.0",
@@ -72,17 +60,17 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes
-    "I",      # isort
-    "C",      # flake8-comprehensions
-    "B",      # flake8-bugbear
-    "UP",     # pyupgrade
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
 ]
 ignore = [
-    "E501",   # line too long
-    "B008",   # function call in default argument
+    "E501", # line too long
+    "B008", # function call in default argument
 ]
 
 [tool.mypy]
@@ -98,20 +86,9 @@ warn_unused_ignores = true
 warn_no_return = true
 strict_optional = true
 
-[tool.pytest.ini_options]
-testpaths = ["lorekeeper/tests"]
-asyncio_mode = "auto"
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "--tb=short -v"
-
 [tool.coverage.run]
-source = ["lorekeeper"]
-omit = [
-    "*/tests/*",
-    "*/test_*.py",
-]
+source = ["app"]
+omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -122,3 +99,6 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

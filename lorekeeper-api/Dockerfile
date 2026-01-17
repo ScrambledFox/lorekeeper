@@ -7,7 +7,7 @@ RUN pip install uv
 
 # Copy all project files needed for build
 COPY pyproject.toml uv.lock* README.md ./
-COPY lorekeeper ./lorekeeper
+COPY app ./app
 
 # Create virtual environment and install dependencies
 RUN uv venv /opt/venv
@@ -16,4 +16,4 @@ RUN uv pip install -e .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "lorekeeper.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

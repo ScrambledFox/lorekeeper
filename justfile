@@ -37,12 +37,12 @@ update:
 # Run development API server with hot reload
 dev:
     @echo "🚀 Starting API development server..."
-    @cd {{API_DIR}} && UV_PROJECT_ENVIRONMENT=../{{VENV_DIR}} uv run uvicorn lorekeeper.main:app --reload --host 0.0.0.0 --port 8000
+    @cd {{API_DIR}} && UV_PROJECT_ENVIRONMENT=../{{VENV_DIR}} uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run API server in production mode
 run:
     @echo "🚀 Starting API server..."
-    @cd {{API_DIR}} && UV_PROJECT_ENVIRONMENT=../{{VENV_DIR}} uv run uvicorn lorekeeper.main:app --host 0.0.0.0 --port 8000
+    @cd {{API_DIR}} && UV_PROJECT_ENVIRONMENT=../{{VENV_DIR}} uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # Run entire stack with Docker Compose
 up:
