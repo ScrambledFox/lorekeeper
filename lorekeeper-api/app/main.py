@@ -5,7 +5,7 @@ LoreKeeper API main application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import api, claims, documents, entities, mentions, retrieval, worlds
+from app.routes import api, worlds
 
 app: FastAPI = FastAPI(
     title="LoreKeeper",
@@ -26,11 +26,11 @@ app.add_middleware(
 app.include_router(api.router)
 
 app.include_router(worlds.router)
-app.include_router(entities.router)
-app.include_router(documents.router)
-app.include_router(mentions.router)
-app.include_router(retrieval.router)
-app.include_router(claims.router)
+# app.include_router(entities.router)
+# app.include_router(documents.router)
+# app.include_router(mentions.router)
+# app.include_router(retrieval.router)
+# app.include_router(claims.router)
 
 
 if __name__ == "__main__":

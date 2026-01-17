@@ -27,9 +27,6 @@ services:
         - action: sync
           path: ./app
           target: /app/app
-        - action: sync
-          path: ./lorekeeper
-          target: /app/lorekeeper
         - action: rebuild
           path: ./pyproject.toml
     ports:

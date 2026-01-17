@@ -1,22 +1,16 @@
 """Claim domain model."""
 
 from datetime import datetime
-from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, String, Text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import DateTime, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
-from app.db.utils import utc_now
-
-
-class ClaimTruth(str, Enum):
-    """Truth value for a claim."""
-
-    CANON_TRUE = "CANON_TRUE"
-    CANON_FALSE = "CANON_FALSE"
+from app.utils.datetime import utc_now
 
 
 class Claim(Base):
@@ -26,33 +20,39 @@ class Claim(Base):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     world_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    snippet_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
-    claimed_by_entity_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
-    # Subject-Predicate-Object triple
-    subject_entity_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
-    predicate: Mapped[str] = mapped_column(String(255), nullable=False)
-    object_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    subject_entity_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    predicate: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # e.g., "is located in", "is allied with"
     object_entity_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    object_value: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True
+    )  # e.g., {"amount": 100, "unit": "years"}
 
-    # Truth value
-    truth_status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default=ClaimTruth.CANON_TRUE
-    )
+    canon_state: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="DRAFT"
+    )  # e.g., "DRAFT", "ARCHIVED", "STRICT", "MYTHIC", "APOCRYPHAL"
+    confidence: Mapped[float] = mapped_column(
+        nullable=False, default=0.5
+    )  # Confidence level (0.0 to 1.0). STRICT + 1.0 = believed facts, APOCRYPHAL + 0.0 = widely disputed untruths.
 
-    # Belief prevalence: How widely believed is this claim in the world?
-    # 0.0 = Nobody believes it (obscure truth)
-    # 0.5 = Moderately believed (some know it)
-    # 1.0 = Universally believed (everyone thinks it's true)
-    belief_prevalence: Mapped[float] = mapped_column(nullable=False, default=0.5)
+    asserted_by_entity_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
-    # Audit trail
-    canon_ref_entity_version_id: Mapped[UUID | None] = mapped_column(
+    source_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), nullable=True
-    )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    )  # Where the claim was first recorded, a book chapter, oral legend, research note, etc.
 
-    # Timestamps
+    created_by: Mapped[str] = mapped_column(
+        String(100), nullable=False
+    )  # user:joris, agent:lorebot, import:archive-12
+    version_group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, default=uuid4
+    )  # Grouping for versioning of same conceptual claims. The city fell in 902 vs The city fell in 903.
+    supersedes_claim_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )  # Points to the claim that supersedes this one, if any.
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=utc_now, onupdate=utc_now, nullable=False
@@ -60,3 +60,29 @@ class Claim(Base):
 
     def __repr__(self) -> str:
         return f"<Claim subject={self.subject_entity_id} {self.predicate} {self.object_text or self.object_entity_id} [{self.truth_status}] (believed: {self.belief_prevalence:.1%})>"
+
+
+class ClaimEmbedding(Base):
+    """Embedding for a claim."""
+
+    __tablename__ = "claim_embedding"
+
+    claim_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True
+    )  # One-to-one with Claim
+    embedding: Mapped[list[float]] = mapped_column(
+        Vector, nullable=False
+    )  # Vector embedding of the claim text
+    model: Mapped[str] = mapped_column(
+        String(100), nullable=False
+    )  # Model used to generate the embedding
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+
+
+class ClaimTag(Base):
+    """Tags associated with a Claim."""
+
+    __tablename__ = "claim_tag"
+
+    claim_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    tag_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)

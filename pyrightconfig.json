@@ -1,0 +1,6 @@
+{
+    "include": [
+        "lorekeeper-api"
+    ],
+    "stubPath": "typings"
+}
