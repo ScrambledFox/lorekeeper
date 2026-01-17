@@ -1,0 +1,317 @@
+# LoreKeeper-API: Multimodal Assets (Video/Sora, Audio/Songs) — Implementation Instructions
+
+You are implementing **API-specific** changes for the LoreKeeper system to support **generation, storage, and provenance** of multimodal assets (e.g., videos generated via Sora, songs generated from in-lore hymns). The LoreKeeper-API is the **system of record** and must remain provider-agnostic.
+
+## Goals
+
+1. Add a first-class **Asset registry** (what was created, where stored, metadata).
+2. Add **AssetJob** tracking (queued/running/succeeded/failed/cancelled) to support asynchronous generation.
+3. Add **Derivation / provenance** linking assets to the lore inputs used (claims, entities, sources, source chunks), including the exact prompt spec and an idempotency hash.
+4. Provide minimal endpoints for:
+   - Job creation
+   - Job status updates (worker callbacks)
+   - Asset retrieval
+   - Filtering assets by world and related lore references
+5. Enforce world scoping, permissions, validation, idempotency, and auditability.
+
+Non-goals (for this phase):
+- Implement the actual provider generation (belongs to asset generator workers).
+- Build a rich UI (frontend responsibility).
+- Encode/stream media (infrastructure/CDN responsibility).
+
+---
+
+## Domain Model Additions
+
+### 1) Asset
+Represents the produced artifact stored in object storage (S3-compatible).
+
+**Fields (minimum):**
+- `id: uuid`
+- `world_id: uuid`
+- `type: enum` (`VIDEO`, `AUDIO`, `IMAGE`, `MAP`, `PDF`, ...)
+- `format: string` (e.g., `mp4`, `wav`)
+- `status: enum` (`READY`, `FAILED`, `DELETED`)
+- `storage_key: string` (S3 key)
+- `content_type: string` (e.g., `video/mp4`)
+- `duration_seconds: int?` (audio/video)
+- `size_bytes: bigint?`
+- `checksum: string?`
+- `metadata: jsonb` (resolution, bitrate, codec, thumbnail keys, etc.)
+- `created_by: string`
+- `created_at: timestamp`
+
+### 2) AssetJob
+Tracks the asynchronous generation process. Must be provider-agnostic.
+
+**Fields (minimum):**
+- `id: uuid`
+- `world_id: uuid`
+- `asset_type: enum` (same as Asset.type)
+- `provider: string` (e.g., `sora`, `audio_model_x`)
+- `model_id: string?`
+- `status: enum` (`QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED`)
+- `priority: int?`
+- `requested_by: string`
+- `input_hash: string` (idempotency key)
+- `prompt_spec: jsonb` (structured prompt; validated by schema per asset_type/provider)
+- `error_code: string?`
+- `error_message: text?`
+- `created_at: timestamp`
+- `started_at: timestamp?`
+- `finished_at: timestamp?`
+
+### 3) AssetDerivation (Provenance)
+Links a job (and resulting asset) to lore inputs and stores the exact inputs used.
+
+**Fields (minimum):**
+- `id: uuid`
+- `world_id: uuid`
+- `asset_job_id: uuid` (FK)
+- `asset_id: uuid?` (FK; nullable until job succeeds)
+- `source_id: uuid?` (optional)
+- `prompt_spec: jsonb` (copy of the spec used; immutable snapshot)
+- `input_hash: string` (must match job)
+- `lore_snapshot: jsonb` (optional but recommended; see below)
+- `created_at: timestamp`
+
+**Join tables (recommended for queryability):**
+- `asset_derivation_claims(derivation_id uuid, claim_id uuid)`
+- `asset_derivation_entities(derivation_id uuid, entity_id uuid)`
+- `asset_derivation_source_chunks(derivation_id uuid, source_chunk_id uuid)`
+
+**Lore snapshot (recommended):**
+- At minimum: claim IDs + `updated_at` timestamps and/or explicit version IDs if your claims are versioned.
+- Purpose: reproducibility and drift prevention.
+
+---
+
+## Database Instructions (Postgres)
+
+1. Create tables:
+   - `assets`
+   - `asset_jobs`
+   - `asset_derivations`
+   - join tables for claims/entities/source_chunks
+
+2. Indexing (minimum):
+   - `assets(world_id, type, created_at desc)`
+   - `asset_jobs(world_id, status, created_at desc)`
+   - `asset_jobs(world_id, input_hash)` UNIQUE (or partial unique based on status) to support idempotency
+   - `asset_derivations(world_id, asset_job_id)` UNIQUE
+   - Join tables:
+     - index on `(claim_id)` and `(entity_id)` and `(source_chunk_id)` for reverse lookups
+     - composite index `(derivation_id, claim_id)` etc.
+
+3. Constraints:
+   - `asset_jobs.world_id` must match referenced world of any lore IDs in derivation.
+   - `asset_derivations.asset_id` can only be set when `asset_jobs.status = SUCCEEDED`.
+
+---
+
+## API Endpoints (Minimum Viable)
+
+### A) Create a Job
+**POST** `/asset-jobs`
+
+**Request body (minimum):**
+- `world_id`
+- `asset_type`
+- `provider`
+- `model_id?`
+- `prompt_spec` (json)
+- `references`:
+  - `claim_ids?: uuid[]`
+  - `entity_ids?: uuid[]`
+  - `source_chunk_ids?: uuid[]`
+  - `source_id?: uuid`
+- `idempotency_key?: string` (optional; if omitted, compute from canonical hash rules below)
+
+**Behavior:**
+1. Validate:
+   - all referenced IDs exist
+   - all referenced IDs belong to `world_id`
+   - `prompt_spec` passes JSON schema for `(asset_type, provider)`
+2. Compute `input_hash` (unless provided) using:
+   - canonical JSON serialization of `prompt_spec` + sorted references + model/provider + lore snapshot/version identifiers
+3. Idempotency:
+   - If an existing job with same `(world_id, input_hash)` exists in a non-terminal state, return it.
+   - If an existing SUCCEEDED job exists and it has an asset, return that (or return job + asset link).
+4. Persist:
+   - create `asset_jobs` row with `status=QUEUED`
+   - create `asset_derivations` row referencing the job and including prompt_spec + input_hash + lore snapshot
+   - create join rows for references
+5. Dispatch:
+   - publish job to a queue OR write to outbox for reliable publishing (implementation-specific)
+
+**Response:**
+- job object + derivation id (and asset if already exists via idempotency)
+
+---
+
+### B) Read a Job
+**GET** `/asset-jobs/:id`
+
+Return:
+- job fields
+- derivation (including references)
+- asset (if job succeeded)
+
+---
+
+### C) List Jobs
+**GET** `/asset-jobs?world_id=&status=&asset_type=&provider=&requested_by=&created_after=&created_before=`
+
+Return paginated list.
+
+---
+
+### D) Worker: Mark Job Running
+**PATCH** `/asset-jobs/:id`
+(Restricted to internal/worker auth)
+
+Allowed updates:
+- `status` transitions:
+  - `QUEUED -> RUNNING`
+  - `RUNNING -> SUCCEEDED | FAILED | CANCELLED`
+- `started_at`, `finished_at`
+- `error_code`, `error_message`
+
+Enforce valid transitions.
+
+---
+
+### E) Worker: Complete Job (Attach Asset)
+**POST** `/asset-jobs/:id/complete`
+(Restricted to internal/worker auth)
+
+**Request body:**
+- `asset`:
+  - `type`
+  - `format`
+  - `storage_key`
+  - `content_type`
+  - `duration_seconds?`
+  - `size_bytes?`
+  - `checksum?`
+  - `metadata?`
+
+**Behavior:**
+1. Create `assets` record.
+2. Update job status to `SUCCEEDED`, set `finished_at`.
+3. Update derivation to set `asset_id`.
+4. Return job + asset.
+
+---
+
+### F) Worker: Fail Job
+**POST** `/asset-jobs/:id/fail`
+(Restricted to internal/worker auth)
+
+**Request body:**
+- `error_code`
+- `error_message`
+
+Update job to `FAILED`, set `finished_at`. Do not create an asset.
+
+---
+
+### G) Get Asset
+**GET** `/assets/:id`
+
+Return asset + derivation references.
+
+---
+
+### H) List/Search Assets
+**GET** `/assets?world_id=&type=&status=&created_by=&related_claim_id=&related_entity_id=&related_source_chunk_id=&source_id=`
+
+Implementation must support reverse lookup via join table indexes.
+
+---
+
+### I) Signed URLs (Optional but Recommended)
+- **POST** `/assets/:id/presign-download`
+- **POST** `/assets/presign-upload` (if clients upload directly)
+
+These endpoints must enforce authorization and world scope.
+
+---
+
+## Validation Rules (Must Implement)
+
+1. **World scoping**:
+   - Every referenced claim/entity/source/source_chunk must belong to `world_id`.
+2. **Prompt spec schema validation**:
+   - Maintain JSON schemas per `(asset_type, provider)`:
+     - video (Sora) schema
+     - audio (song/hymn) schema
+3. **Idempotency**:
+   - `input_hash` must be stable and based on canonical serialization.
+4. **Authorization**:
+   - Only authorized users/agents can create jobs.
+   - Only internal workers can update status/complete/fail jobs.
+5. **Auditability**:
+   - Always record `requested_by` and `created_by`.
+   - Persist immutable snapshot of `prompt_spec` and lore snapshot in derivation.
+
+---
+
+## Hashing / Canonicalization Instructions
+
+To compute `input_hash`:
+1. Canonicalize `prompt_spec`:
+   - stable JSON serialization (sorted keys, no whitespace)
+2. Canonicalize references:
+   - sort IDs
+   - include `world_id`, `asset_type`, `provider`, `model_id`
+3. Include lore snapshot identifiers:
+   - at minimum: list of claim IDs + their `updated_at` timestamps (or version IDs)
+4. Compute:
+   - `sha256(concatenated_canonical_string)`
+
+Store `input_hash` on job and derivation.
+
+---
+
+## Status Model and Transitions
+
+Job status enum:
+- `QUEUED`
+- `RUNNING`
+- `SUCCEEDED`
+- `FAILED`
+- `CANCELLED`
+
+Allowed transitions:
+- `QUEUED -> RUNNING | CANCELLED`
+- `RUNNING -> SUCCEEDED | FAILED | CANCELLED`
+- Terminal states: `SUCCEEDED`, `FAILED`, `CANCELLED`
+
+Reject invalid transitions.
+
+---
+
+## Implementation Notes
+
+- Keep LoreKeeper-API provider-agnostic: store provider/model IDs but do not embed provider logic.
+- Prefer outbox pattern or transactional enqueue semantics to avoid “job row created but not queued” failure.
+- Ensure list endpoints are paginated and indexed for world-level scaling.
+- Ensure derivation joins support “show all assets related to claim/entity/source chunk” queries efficiently.
+- Do not block job creation on provider availability; treat provider-side failures as worker concerns.
+
+---
+
+## Acceptance Criteria
+
+The following must work end-to-end via API calls alone:
+
+1. Create an AssetJob referencing claims/source chunks; job persists with derivation and `QUEUED` status.
+2. Worker marks job `RUNNING`.
+3. Worker completes job with asset payload; asset is created; job becomes `SUCCEEDED`; derivation links asset; retrieval endpoints show provenance.
+4. Assets can be listed by:
+   - world_id + type
+   - related_claim_id / related_entity_id / related_source_chunk_id
+5. Duplicate job requests with identical inputs return the existing job/asset (idempotency).
+
+End of instructions.

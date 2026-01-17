@@ -8,6 +8,13 @@ class BadRequestException(HTTPException):
         super().__init__(status_code=400, detail=message)
 
 
+class UnauthorizedException(HTTPException):
+    """Exception raised for unauthorized requests."""
+
+    def __init__(self, message: str = "Unauthorized"):
+        super().__init__(status_code=401, detail=message)
+
+
 class NotFoundException(HTTPException):
     """Exception raised when a requested resource is not found."""
 

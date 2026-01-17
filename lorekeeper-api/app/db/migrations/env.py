@@ -11,6 +11,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 # Import our models - avoid connecting to database at import time
 from app.db.database import Base
 
+# Import all models to ensure they are registered with Base
+# This is necessary for Alembic autogenerate to detect all tables
+from app.models.db import worlds, entities, claims, sources, books, assets  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -11,6 +11,12 @@ def get_env_str(name: str, default: str) -> str:
     return value if value is not None else default
 
 
+def get_env_int(name: str, default: int) -> int:
+    """Return an environment variable as an integer with a safe default."""
+    value = os.getenv(name)
+    return int(value) if value is not None else default
+
+
 class Settings:
     """Application settings with proper typing."""
 
@@ -42,6 +48,14 @@ class Settings:
     OPENAI_ORGANIZATION: str = ""
     OPENAI_EMBEDDING_MODEL_ID: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSIONS: int = 1536
+
+    # S3/Object Storage settings
+    S3_BUCKET_NAME: str = get_env_str("S3_BUCKET_NAME", "lorekeeper-assets")
+    S3_REGION: str = get_env_str("S3_REGION", "us-east-1")
+    S3_ACCESS_KEY_ID: str = get_env_str("S3_ACCESS_KEY_ID", "")
+    S3_SECRET_ACCESS_KEY: str = get_env_str("S3_SECRET_ACCESS_KEY", "")
+    S3_ENDPOINT_URL: str | None = get_env_str("S3_ENDPOINT_URL", "") or None
+    S3_PRESIGNED_URL_EXPIRY_SECONDS: int = get_env_int("S3_PRESIGNED_URL_EXPIRY_SECONDS", 3600)
 
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
