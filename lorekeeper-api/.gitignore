@@ -104,15 +104,6 @@ venv.bak/
 .venv/
 uv.lock
 
-# Node
-node_modules/
-
-# Frontend build output
-*.tsbuildinfo
-.next/
-dist/
-build/
-
 # Spyder project settings
 .spyderproject
 .spyproject

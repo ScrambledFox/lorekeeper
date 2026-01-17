@@ -1,6 +1,6 @@
-# Monorepo Justfile Quick Reference
+# Justfile Quick Reference
 
-This monorepo uses [Just](https://just.systems/) for command shortcuts. Commands are run from the repo root and use the shared `.venv/` by default.
+This project uses [Just](https://just.systems/) for easy command execution.
 
 ## Installation
 
@@ -17,19 +17,26 @@ sudo apt-get install just
 curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin
 ```
 
-## Quick Start
+## Quick Start Commands
 
+### Get Started Immediately
 ```bash
-just setup        # Install dependencies into shared venv
+just setup        # Install dependencies
+just dev          # Start development server (http://localhost:8000)
 just db-up        # Start PostgreSQL
-just dev          # Start API dev server (http://localhost:8000)
+```
+
+### One-Command Setups
+```bash
+just start        # Full setup: dependencies + database + dev server
+just dev-full     # Start entire Docker stack (Postgres + API)
 ```
 
 ## Common Commands
 
 ### Development Server
 ```bash
-just dev          # Hot-reload API dev server
+just dev          # Hot-reload development server
 just run          # Production server
 just logs         # View Docker logs
 ```
@@ -48,8 +55,9 @@ just test-file path  # Run specific test file
 just fmt          # Format code with Black
 just lint         # Check code with Ruff
 just lint-fix     # Auto-fix linting issues
-just type-check   # Type checking with pyright
+just type-check   # Type checking with mypy
 just check        # Run all checks (fmt + lint + type-check)
+just verify       # Test + check workflow
 ```
 
 ### Database
@@ -82,12 +90,55 @@ just outdated             # Show outdated packages
 
 ### Utilities
 ```bash
+just clean        # Remove cache/build files
+just clean-all    # Remove cache + Docker volumes
+just info         # Show environment info
 just docs         # Open API docs (http://localhost:8000/docs)
 just redoc        # Open ReDoc docs (http://localhost:8000/redoc)
 ```
 
+## Workflow Examples
+
+### Start Fresh Development Session
+```bash
+just clean
+just setup
+just db-up
+just dev
+```
+
+### Run Tests Before Commit
+```bash
+just verify
+```
+
+### Deploy/Build Locally
+```bash
+just build
+```
+
+### Full Docker Stack
+```bash
+just dev-full
+# Now access at http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
 ## Tips
 
-- Run `just` or `just --list` to see all available commands
+- Run `just` or `just help` to see all available commands
 - Commands with parameters use syntax like `just db-migrate "My migration name"`
-- The root `justfile` forwards to the API project but uses the shared `.venv/`
+- Run `just info` to verify your environment setup
+- Use `just logs service-name` to follow logs from specific containers
+- The `--list` flag shows descriptions: `just --list`
+
+## Behind the Scenes
+
+The justfile automates common development tasks by wrapping:
+- **uv**: Python package management
+- **pytest**: Testing framework
+- **black**: Code formatting
+- **ruff**: Linting
+- **mypy**: Type checking
+- **alembic**: Database migrations
+- **docker-compose**: Container orchestration
