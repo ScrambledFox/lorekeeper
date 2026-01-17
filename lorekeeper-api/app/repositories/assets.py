@@ -4,25 +4,23 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import and_, select, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models.api.assets import (
     AssetCreate,
     AssetJobCreate,
-    AssetJobUpdate,
-    AssetJobStatusEnum,
 )
 from app.models.db.assets import (
     Asset,
-    AssetJob,
     AssetDerivation,
     AssetDerivationClaim,
     AssetDerivationEntity,
     AssetDerivationSourceChunk,
-    AssetStatus,
+    AssetJob,
     AssetJobStatus,
+    AssetStatus,
 )
 
 
@@ -121,7 +119,7 @@ class AssetRepository:
         # Apply pagination and ordering
         query = query.order_by(Asset.created_at.desc()).offset(skip).limit(limit)
         result = await session.execute(query)
-        assets = result.unique().scalars().all()
+        assets = list(result.unique().scalars().all())
 
         return assets, total
 
@@ -263,7 +261,7 @@ class AssetRepository:
             )
         )
         result = await session.execute(query)
-        jobs = result.unique().scalars().all()
+        jobs = list(result.unique().scalars().all())
 
         return jobs, total
 

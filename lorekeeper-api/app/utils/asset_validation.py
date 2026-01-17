@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import BadRequestException, NotFoundException, UnauthorizedException
+from app.core.exceptions import BadRequestException, UnauthorizedException
 from app.models.db.claims import Claim
 from app.models.db.entities import Entity
 from app.models.db.sources import Source, SourceChunk
@@ -43,6 +43,76 @@ async def validate_world_exists(world_id: UUID, session: AsyncSession) -> None:
         raise WorldNotFoundError(f"World {world_id} not found")
 
 
+async def _validate_claims_world_scoping(
+    world_id: UUID,
+    claim_ids: list[UUID],
+    session: AsyncSession,
+) -> None:
+    """Validate that all claims belong to the specified world."""
+    if not claim_ids:
+        return
+    result = await session.execute(
+        select(Claim).where(Claim.id.in_(claim_ids) & (Claim.world_id != world_id))
+    )
+    if result.scalars().first():
+        raise WorldScopeViolationError("One or more claims do not belong to the specified world")
+
+
+async def _validate_entities_world_scoping(
+    world_id: UUID,
+    entity_ids: list[UUID],
+    session: AsyncSession,
+) -> None:
+    """Validate that all entities belong to the specified world."""
+    if not entity_ids:
+        return
+    result = await session.execute(
+        select(Entity).where(Entity.id.in_(entity_ids) & (Entity.world_id != world_id))
+    )
+    if result.scalars().first():
+        raise WorldScopeViolationError("One or more entities do not belong to the specified world")
+
+
+async def _validate_source_chunks_world_scoping(
+    world_id: UUID,
+    source_chunk_ids: list[UUID],
+    session: AsyncSession,
+) -> None:
+    """Validate that all source chunks belong to the specified world."""
+    if not source_chunk_ids:
+        return
+    result = await session.execute(select(SourceChunk).where(SourceChunk.id.in_(source_chunk_ids)))
+    chunks = result.scalars().all()
+    if len(chunks) != len(source_chunk_ids):
+        raise ReferenceNotFoundError("One or more source chunks not found")
+
+    # Get sources for these chunks
+    source_ids = {chunk.source_id for chunk in chunks}
+    result = await session.execute(select(Source).where(Source.id.in_(source_ids)))
+    sources = result.scalars().all()
+    for source in sources:
+        if source.world_id != world_id:
+            raise WorldScopeViolationError(
+                "One or more source chunks do not belong to the specified world"
+            )
+
+
+async def _validate_source_world_scoping(
+    world_id: UUID,
+    source_id: UUID | None,
+    session: AsyncSession,
+) -> None:
+    """Validate that a source belongs to the specified world."""
+    if not source_id:
+        return
+    result = await session.execute(select(Source).where(Source.id == source_id))
+    source = result.scalars().first()
+    if not source:
+        raise ReferenceNotFoundError(f"Source {source_id} not found")
+    if source.world_id != world_id:
+        raise WorldScopeViolationError(f"Source {source_id} does not belong to world {world_id}")
+
+
 async def validate_world_scoping(
     world_id: UUID,
     claim_ids: list[UUID],
@@ -52,55 +122,10 @@ async def validate_world_scoping(
     session: AsyncSession,
 ) -> None:
     """Validate that all referenced entities belong to the specified world."""
-    # Check all claims belong to world
-    if claim_ids:
-        result = await session.execute(
-            select(Claim).where(Claim.id.in_(claim_ids) & (Claim.world_id != world_id))
-        )
-        if result.scalars().first():
-            raise WorldScopeViolationError(
-                "One or more claims do not belong to the specified world"
-            )
-
-    # Check all entities belong to world
-    if entity_ids:
-        result = await session.execute(
-            select(Entity).where(Entity.id.in_(entity_ids) & (Entity.world_id != world_id))
-        )
-        if result.scalars().first():
-            raise WorldScopeViolationError(
-                "One or more entities do not belong to the specified world"
-            )
-
-    # Check all source chunks belong to world (via source)
-    if source_chunk_ids:
-        result = await session.execute(
-            select(SourceChunk).where(SourceChunk.id.in_(source_chunk_ids))
-        )
-        chunks = result.scalars().all()
-        if len(chunks) != len(source_chunk_ids):
-            raise ReferenceNotFoundError("One or more source chunks not found")
-
-        # Get sources for these chunks
-        source_ids = {chunk.source_id for chunk in chunks}
-        result = await session.execute(select(Source).where(Source.id.in_(source_ids)))
-        sources = result.scalars().all()
-        for source in sources:
-            if source.world_id != world_id:
-                raise WorldScopeViolationError(
-                    "One or more source chunks do not belong to the specified world"
-                )
-
-    # Check source belongs to world
-    if source_id:
-        result = await session.execute(select(Source).where(Source.id == source_id))
-        source = result.scalars().first()
-        if not source:
-            raise ReferenceNotFoundError(f"Source {source_id} not found")
-        if source.world_id != world_id:
-            raise WorldScopeViolationError(
-                f"Source {source_id} does not belong to world {world_id}"
-            )
+    await _validate_claims_world_scoping(world_id, claim_ids, session)
+    await _validate_entities_world_scoping(world_id, entity_ids, session)
+    await _validate_source_chunks_world_scoping(world_id, source_chunk_ids, session)
+    await _validate_source_world_scoping(world_id, source_id, session)
 
 
 async def validate_references_exist(

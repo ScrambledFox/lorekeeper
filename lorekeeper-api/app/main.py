@@ -5,7 +5,7 @@ LoreKeeper API main application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import api, books, claims, entities, sources, worlds, assets
+from app.routes import api, assets, books, claims, entities, sources, worlds
 
 app: FastAPI = FastAPI(
     title="LoreKeeper",
