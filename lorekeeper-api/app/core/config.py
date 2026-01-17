@@ -37,6 +37,12 @@ class Settings:
     DB_POOL_RECYCLE: int = 3600
     DB_ECHO: bool = DEBUG
 
+    # OpenAI settings
+    OPENAI_API_KEY: str = ""
+    OPENAI_ORGANIZATION: str = ""
+    OPENAI_EMBEDDING_MODEL_ID: str = "text-embedding-3-small"
+    OPENAI_EMBEDDING_DIMENSIONS: int = 1536
+
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100

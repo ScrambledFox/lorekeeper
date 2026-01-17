@@ -49,4 +49,7 @@ class BookVersion(Base):
     s3_pdf_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
+    )
     rendered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

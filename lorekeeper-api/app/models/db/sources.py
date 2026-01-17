@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,7 +34,10 @@ class Source(Base):
     world_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     type: Mapped[SourceType] = mapped_column(String(100), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    author_ids: Mapped[list[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    author_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(PG_UUID(as_uuid=True)),
+        nullable=False,
+    )
     origin: Mapped[str | None] = mapped_column(String(255), nullable=True)
     book_version_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -1,0 +1,153 @@
+classDiagram
+direction LR
+
+class World {
+  +uuid id
+  +string name
+  +text description
+  +jsonb metadata
+  +datetime created_at
+  +datetime updated_at
+}
+
+class Entity {
+  +uuid id
+  +uuid world_id
+  +string type  <<enum>>
+  +string name
+  +string summary
+  +text description
+  +jsonb metadata
+  +datetime created_at
+  +datetime updated_at
+}
+
+class EntityAlias {
+  +uuid id
+  +uuid entity_id
+  +string alias
+  +string locale
+  +string source_note
+  +datetime created_at
+}
+
+class Claim {
+  +uuid id
+  +uuid world_id
+  +uuid subject_entity_id
+  +string predicate
+  +uuid object_entity_id
+  +jsonb object_value
+  +string canon_state  <<enum>>
+  +float confidence
+  +uuid asserted_by_entity_id
+  +uuid source_id
+  +string created_by
+  +uuid version_group_id
+  +uuid supersedes_claim_id
+  +datetime created_at
+  +datetime updated_at
+}
+
+class Source {
+  +uuid id
+  +uuid world_id
+  +string type  <<enum>>
+  +string title
+  +list[uuid] author_ids
+  +string origin
+  +uuid book_version_id
+  +jsonb metadata
+  +datetime created_at
+}
+
+class SourceChunk {
+  +uuid id
+  +uuid source_id
+  +int chunk_index
+  +text content
+  +vector embedding
+  +jsonb metadata
+  +datetime created_at
+}
+
+class ClaimEmbedding {
+  +uuid claim_id
+  +vector embedding
+  +string model
+  +datetime created_at
+}
+
+class Book {
+  +uuid id
+  +uuid world_id
+  +string title
+  +list[uuid] writer_ids
+  +jsonb metadata
+  +datetime created_at
+  +datetime updated_at
+}
+
+class BookVersion {
+  +uuid id
+  +uuid book_id
+  +int version_number
+  +string status  <<enum>>
+  +string s3_md_key
+  +string s3_pdf_key
+  +string checksum
+  +datetime created_at
+  +datetime rendered_at
+}
+
+class Tag {
+  +uuid id
+  +uuid world_id
+  +string name
+  +string kind
+  +datetime created_at
+}
+
+class EntityTag {
+  +uuid entity_id
+  +uuid tag_id
+}
+
+class ClaimTag {
+  +uuid claim_id
+  +uuid tag_id
+}
+
+%% Relationships
+World "1" --> "0..*" Entity : contains
+World "1" --> "0..*" Claim : scopes
+World "1" --> "0..*" Source : curates
+World "1" --> "0..*" Book : owns
+World "1" --> "0..*" Tag : defines
+
+Entity "1" --> "0..*" EntityAlias : has
+Entity "0..1" --> "0..*" Claim : subject_of
+Entity "0..1" --> "0..*" Claim : asserted_by
+Entity "0..1" --> "0..*" Claim : object_of
+
+Claim "1" --> "1" Source : supported_by
+Claim "0..1" --> "0..1" Claim : supersedes
+Claim "1" --> "0..1" ClaimEmbedding : embedded_as
+
+Source "1" --> "0..*" SourceChunk : chunked_into
+Source "0..*" --> "0..1" BookVersion : derived_from
+
+Book "1" --> "0..*" BookVersion : versions
+
+Entity "0..*" --> "0..*" Tag : tagged
+Claim "0..*" --> "0..*" Tag : tagged
+EntityTag "0..*" --> "1" Entity
+EntityTag "0..*" --> "1" Tag
+ClaimTag "0..*" --> "1" Claim
+ClaimTag "0..*" --> "1" Tag
+
+%% Notes on enums (informal)
+%% Entity.type: PERSON | LOCATION | FACTION | ORGANIZATION | ITEM | CREATURE | EVENT | CONCEPT | ARTIFACT | VEHICLE | OTHER
+%% Claim.canon_state: STRICT | MYTHIC | APOCRYPHAL | DRAFT
+%% Source.type: BOOK | CHAPTER | ARTICLE | ORAL_TRADITION | INSCRIPTION | ARCHIVE | RESEARCH_NOTE | SONG | OTHER
+%% BookVersion.status: DRAFT | READY_FOR_RENDER | RENDERING | RENDERED | FAILED

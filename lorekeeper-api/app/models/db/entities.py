@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,7 +37,6 @@ class Entity(Base):
     world_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     type: Mapped[EntityType] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    aliases: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, nullable=False)
     summary: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -68,5 +67,6 @@ class EntityTag(Base):
 
     __tablename__ = "entity_tag"
 
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     entity_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     tag_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)

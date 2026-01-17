@@ -84,5 +84,6 @@ class ClaimTag(Base):
 
     __tablename__ = "claim_tag"
 
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     claim_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     tag_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)

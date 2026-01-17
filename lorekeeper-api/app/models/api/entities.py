@@ -1,4 +1,4 @@
-"""Entity API schemas."""
+"""API models for entity domain objects."""
 
 from datetime import datetime
 from uuid import UUID
@@ -6,51 +6,89 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class EntityCreate(BaseModel):
-    """Schema for creating an entity."""
+class EntityBase(BaseModel):
+    """Base Entity schema with common fields."""
 
-    type: str = Field(..., min_length=1, max_length=100, description="Entity type")
-    canonical_name: str = Field(..., min_length=1, max_length=255)
-    aliases: list[str] = Field(default_factory=list, description="Alternative names")
-    summary: str | None = Field(None, max_length=500)
-    description: str | None = Field(None, description="Full description")
-    tags: list[str] = Field(default_factory=list, description="Tag list")
-    is_fiction: bool = Field(False, description="Whether this entity is fiction (in-lore) or fact")
+    world_id: UUID = Field(..., description="World identifier")
+    type: str = Field(..., max_length=100, description="Entity type")
+    name: str = Field(..., max_length=255, description="Entity name")
+    summary: str | None = Field(None, max_length=500, description="Brief summary")
+    description: str | None = Field(None, description="Detailed description")
+    meta: dict | None = Field(None, description="Additional metadata")
+
+
+class EntityCreate(EntityBase):
+    """Schema for creating a new entity."""
+
+    pass
 
 
 class EntityUpdate(BaseModel):
     """Schema for updating an entity."""
 
-    canonical_name: str | None = None
-    aliases: list[str] | None = None
-    summary: str | None = None
-    description: str | None = None
-    tags: list[str] | None = None
-    is_fiction: bool | None = None
-    status: str | None = None
+    type: str | None = Field(None, max_length=100, description="Entity type")
+    name: str | None = Field(None, max_length=255, description="Entity name")
+    summary: str | None = Field(None, max_length=500, description="Brief summary")
+    description: str | None = Field(None, description="Detailed description")
+    meta: dict | None = Field(None, description="Additional metadata")
 
 
-class EntityResponse(BaseModel):
-    """Schema for entity response."""
+class EntityResponse(EntityBase):
+    """Schema for entity responses."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    world_id: UUID
-    type: str
-    canonical_name: str
-    aliases: list[str]
-    summary: str | None
-    description: str | None
-    tags: list[str]
-    is_fiction: bool
-    status: str
-    created_at: datetime
-    updated_at: datetime
+    id: UUID = Field(..., description="Entity unique identifier")
+    created_at: datetime = Field(..., description="Entity creation timestamp")
+    updated_at: datetime = Field(..., description="Entity last update timestamp")
 
 
-class EntitySearchResult(BaseModel):
-    """Schema for entity search results."""
+class EntityAliasBase(BaseModel):
+    """Base EntityAlias schema with common fields."""
 
-    total: int
-    results: list[EntityResponse]
+    entity_id: UUID = Field(..., description="Entity identifier")
+    alias: str = Field(..., max_length=255, description="Alias name")
+    locale: str | None = Field(None, max_length=10, description="Locale code")
+    source_note: str | None = Field(None, description="Source information")
+
+
+class EntityAliasCreate(EntityAliasBase):
+    """Schema for creating a new entity alias."""
+
+    pass
+
+
+class EntityAliasUpdate(BaseModel):
+    """Schema for updating an entity alias."""
+
+    alias: str | None = Field(None, max_length=255, description="Alias name")
+    locale: str | None = Field(None, max_length=10, description="Locale code")
+    source_note: str | None = Field(None, description="Source information")
+
+
+class EntityAliasResponse(EntityAliasBase):
+    """Schema for entity alias responses."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID = Field(..., description="Entity alias unique identifier")
+    created_at: datetime = Field(..., description="Entity alias creation timestamp")
+
+
+class EntityTagBase(BaseModel):
+    """Base EntityTag schema with common fields."""
+
+    entity_id: UUID = Field(..., description="Entity identifier")
+    tag_id: UUID = Field(..., description="Tag identifier")
+
+
+class EntityTagCreate(EntityTagBase):
+    """Schema for creating a new entity tag association."""
+
+    pass
+
+
+class EntityTagResponse(EntityTagBase):
+    """Schema for entity tag association responses."""
+
+    model_config = ConfigDict(from_attributes=True)

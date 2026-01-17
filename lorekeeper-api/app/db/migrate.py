@@ -99,6 +99,37 @@ CREATE INDEX IF NOT EXISTS ix_entity_mention_id ON entity_mention(id);
 CREATE INDEX IF NOT EXISTS ix_entity_mention_snippet_id ON entity_mention(snippet_id);
 CREATE INDEX IF NOT EXISTS ix_entity_mention_entity_id ON entity_mention(entity_id);
 
+-- Create source table
+CREATE TABLE IF NOT EXISTS source (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    world_id UUID NOT NULL REFERENCES world(id),
+    type VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    author_ids UUID[] NOT NULL,
+    origin VARCHAR(255),
+    book_version_id UUID,
+    meta JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_source_id ON source(id);
+CREATE INDEX IF NOT EXISTS ix_source_world_id ON source(world_id);
+
+-- Create source_chunk table
+CREATE TABLE IF NOT EXISTS source_chunk (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_id UUID NOT NULL REFERENCES source(id),
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(1536) NOT NULL,
+    meta JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_source_chunk_id ON source_chunk(id);
+CREATE INDEX IF NOT EXISTS ix_source_chunk_source_id ON source_chunk(source_id);
+CREATE INDEX IF NOT EXISTS ix_source_chunk_embedding ON source_chunk USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
 COMMIT;
 """
 
